@@ -38,6 +38,7 @@ const database = require('./lib/database');
 const { loadConfigFromDatabase, loadRouteConfig } = require('./lib/configApi');
 const { getTrending } = require("./lib/getTrending");
 const { resolveProxyRatingPosterUrl, parseAnimeCatalogMetaBatch } = require("./utils/parseProps");
+const { resolveApiLanguage } = require("./utils/resolveApiLanguage");
 const { extractIdsFromMeta, extractCanonicalIdFromDynamicUpNextId } = require("./utils/metaIds");
 const { sleep } = require("./utils/concurrency");
 const { resolveMdblistKey, mdblistCacheKey } = require("./utils/mdblistUtils");
@@ -5516,7 +5517,7 @@ const catalogRoute = async function (req, res) {
           if (proxyApiKey) {
             const proxyId = ids.imdbId || (ids.tmdbId ? `tmdb:${ids.tmdbId}` : (ids.tvdbId ? `tvdb:${ids.tvdbId}` : null));
             if (proxyId) {
-              meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: type, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: config.language });
+              meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: type, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: resolveApiLanguage(config.language) });
             }
           } else {
             const resolved = resolveCustomArtUrl(art.posterPattern, ids, type, config, { shape: posterShapeOf(meta) });

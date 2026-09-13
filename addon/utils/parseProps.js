@@ -20,6 +20,7 @@ const { classifyTmdbLocalization } = require('./tmdbLocalization');
 const { malRatingToCertification, isUnratedCertification } = require('./ageRating');
 const { getTmdbMovieCertificationForCountry, getTmdbTvCertificationForCountry, getTvdbCertification } = require('./contentRating');
 const idMappings = require('../lib/id-mappings.js');
+const { isOriginalTitleMode, resolveApiLanguage } = require('./resolveApiLanguage');
 function CATALOG_TTL() { return parseInt(process.env.CATALOG_TTL || 1 * 24 * 60 * 60, 10); }
 const buildInfo = require('../lib/buildInfo');
 // Dynamic import to avoid circular dependency
@@ -295,6 +296,7 @@ function getRatingPosterUrl(type, ids, language, config, fallbackUrl = null) {
  */
 function resolveProxyRatingPosterUrl(type, proxyId, language, key, fallbackUrl = null) {
   if (!proxyId || !key) return null;
+  language = resolveApiLanguage(language);
   const [idSource, idValue] = proxyId.startsWith('tt') ? ['imdb', proxyId] : proxyId.split(':');
   const ids = {
     tmdbId: idSource === 'tmdb' ? idValue : null,
@@ -337,6 +339,7 @@ function getPosterRatingApiKey(config) {
  * Top Poster API returns proper codes that Stremio can handle.
  */
 function buildPosterProxyUrl(host, type, proxyId, fallback, language, config) {
+  language = resolveApiLanguage(language);
   const provider = config.posterRatingProvider || 'none';
   const apiKey = getPosterRatingApiKey(config);
   
@@ -877,6 +880,9 @@ function sortTvdbSearchResults(results, query) {
 }
 
 function processOverviewTranslations(translations, language, overview) {
+  // TMDB has no "original overview" concept, so overview always renders in a
+  // real locale (the resolved fallback) even in "Original Title" mode.
+  language = resolveApiLanguage(language);
   // Try the other Portuguese variant before falling back to English.
   if(language === 'pt-PT' || language === 'pt-BR'){
     let translation = tmdb.getTranslations(translations, language);
@@ -908,6 +914,12 @@ function processOverviewTranslations(translations, language, overview) {
 }
 
 function processTitleTranslations(translations, language, title, type, originalLanguage = null, originalTitle = null) {
+  // "Original Title" mode: always show the item's own original title, skipping
+  // translation lookup and the English fallback entirely.
+  if (isOriginalTitleMode(language) && originalTitle && originalTitle.trim() !== '') {
+    return originalTitle;
+  }
+
   // Extract base language code from user's language (e.g., "pl-PL" -> "pl", "en-US" -> "en")
   const baseLanguage = language ? language.split('-')[0].toLowerCase() : null;
   // Check if user's language matches the original language
@@ -1354,7 +1366,7 @@ function parseConfig(catalogChoices) {
 
 function getRpdbPoster(type, ids, language, rpdbkey) {
     const tier = rpdbkey.split("-")[0]
-    const lang = language.split("-")[0]
+    const lang = resolveApiLanguage(language).split("-")[0]
     const { tmdbId, tvdbId } = ids;
     let baseUrl = `https://api.ratingposterdb.com`;
     let idType = null;
@@ -1396,6 +1408,7 @@ function getRpdbPoster(type, ids, language, rpdbkey) {
 }
 
 function getTopPosterPoster(type, ids, language, topPosterKey, fallbackUrl = null) {
+    language = resolveApiLanguage(language);
     const { tmdbId, imdbId } = ids;
     let baseUrl = `https://api.top-posters.com`;
     let idType = null;
@@ -2590,7 +2603,7 @@ const tmdbMovieImagesInflight = new Map();
 async function getTmdbMovieArtBatch(tmdbId, config, isLandscape = false, originalLanguage = null) {
   if (!tmdbId) return { poster: null, background: null, logo: null };
 
-  const langCode = config.language?.split('-')[0] || 'en';
+  const langCode = resolveApiLanguage(config.language)?.split('-')[0] || 'en';
   const englishOnly = config.artProviders?.englishArtOnly ? '1' : '0';
   const origLangFb = config.artProviders?.originalLangFallback ? '1' : '0';
   const landscape = isLandscape ? '1' : '0';
@@ -2969,7 +2982,7 @@ const tmdbTvImagesInflight = new Map();
 async function getTmdbSeriesArtBatch(tmdbId, config, isLandscape = false, originalLanguage = null) {
   if (!tmdbId) return { poster: null, background: null, logo: null };
 
-  const langCode = config.language?.split('-')[0] || 'en';
+  const langCode = resolveApiLanguage(config.language)?.split('-')[0] || 'en';
   const englishOnly = config.artProviders?.englishArtOnly ? '1' : '0';
   const origLangFb = config.artProviders?.originalLangFallback ? '1' : '0';
   const landscape = isLandscape ? '1' : '0';
@@ -3307,8 +3320,9 @@ function tmdbOriginCountries(details) {
 function selectTmdbImageByLang(images, config, key = 'iso_639_1', originalLanguage = null, originCountries = []) {
   if (!Array.isArray(images) || images.length === 0) return undefined;
 
-  const targetLang = config.artProviders?.englishArtOnly ? 'en' : (config.language?.split('-')[0]?.toLowerCase() || 'en');
-  const targetCountry = config.language?.split('-')[1]?.toUpperCase() || 'US';
+  const resolvedLanguage = resolveApiLanguage(config.language);
+  const targetLang = config.artProviders?.englishArtOnly ? 'en' : (resolvedLanguage?.split('-')[0]?.toLowerCase() || 'en');
+  const targetCountry = resolvedLanguage?.split('-')[1]?.toUpperCase() || 'US';
   const preferOrigLang = config.artProviders?.originalLangFallback;
 
   const targetExact = images.find(img => img[key] === targetLang && img.iso_3166_1 === targetCountry);
