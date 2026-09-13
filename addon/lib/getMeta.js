@@ -1495,7 +1495,8 @@ async function buildTmdbMovieResponse(stremioId, movieData, language, config, us
     title,
     'movie',
     movieData.original_language,
-    movieData.original_title
+    movieData.original_title,
+    config.originalTitleLanguages
   );
   const certification = Utils.getTmdbMovieCertificationForCountry(movieData.release_dates);
   const userCountry = apiLanguage?.split('-')[1];
@@ -1928,7 +1929,8 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
     finalName,
     'series',
     seriesData.original_language,
-    seriesData.original_name
+    seriesData.original_name,
+    config.originalTitleLanguages
   );
 
   const releaseInfo = Utils.buildReleaseInfo(

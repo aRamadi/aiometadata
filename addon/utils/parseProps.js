@@ -17,7 +17,7 @@ const { cacheWrapMetaSmart, cacheWrapGlobal } = require('../lib/getCache');
 const { getReleaseAvailability } = require('./releaseAvailability');
 const { malRatingToCertification, isUnratedCertification } = require('./ageRating');
 const wikiMappings = require('../lib/wiki-mapper.js');
-const { isOriginalTitleMode, resolveApiLanguage } = require('./resolveApiLanguage');
+const { isOriginalTitleMode, resolveApiLanguage, shouldUseOriginalTitle } = require('./resolveApiLanguage');
 function CATALOG_TTL() { return parseInt(process.env.CATALOG_TTL || 1 * 24 * 60 * 60, 10); }
 const buildInfo = require('../lib/buildInfo');
 // Dynamic import to avoid circular dependency
@@ -677,7 +677,7 @@ function parseMedia(el, type, genreList = [], config = {}) {
   if(el.translations){
     el.overview = processOverviewTranslations(el.translations, config.language, el.overview);
     const originalTitle = type === 'movie' ? el.original_title : el.original_name;
-    name = processTitleTranslations(el.translations, config.language, name, type, el.original_language, originalTitle);
+    name = processTitleTranslations(el.translations, config.language, name, type, el.original_language, originalTitle, config.originalTitleLanguages);
   }
 
   return {
@@ -936,10 +936,11 @@ function processOverviewTranslations(translations, language, overview) {
   return overview;
 }
 
-function processTitleTranslations(translations, language, title, type, originalLanguage = null, originalTitle = null) {
-  // "Original Title" mode: always show the item's own original title, skipping
+function processTitleTranslations(translations, language, title, type, originalLanguage = null, originalTitle = null, originalTitleLanguages = null) {
+  // "Original Title" mode (blanket, or this item's original language is in the
+  // user's allowlist): always show the item's own original title, skipping
   // translation lookup and the English fallback entirely.
-  if (isOriginalTitleMode(language) && originalTitle && originalTitle.trim() !== '') {
+  if (shouldUseOriginalTitle(language, originalLanguage, originalTitleLanguages) && originalTitle && originalTitle.trim() !== '') {
     return originalTitle;
   }
 

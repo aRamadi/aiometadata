@@ -164,6 +164,8 @@ export interface ManagerAccount {
 
 export interface AppConfig {
   language: string;
+  /** Original languages (e.g. ["ar-SA", "it-IT"]) whose titles always show untranslated, regardless of `language`. */
+  originalTitleLanguages?: string[];
   addonName: string;
   includeAdult: boolean;
   blurThumbs: boolean;

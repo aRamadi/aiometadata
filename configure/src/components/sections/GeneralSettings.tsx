@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings2 } from 'lucide-react';
+import { Settings2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +105,21 @@ export function GeneralSettings() {
 
   const handleLanguageChange = (value: string) => {
     setConfig(prevConfig => ({ ...prevConfig, language: value }));
+  };
+
+  const handleAddOriginalTitleLanguage = (value: string) => {
+    setConfig(prevConfig => {
+      const current = prevConfig.originalTitleLanguages || [];
+      if (!value || current.includes(value)) return prevConfig;
+      return { ...prevConfig, originalTitleLanguages: [...current, value] };
+    });
+  };
+
+  const handleRemoveOriginalTitleLanguage = (value: string) => {
+    setConfig(prevConfig => ({
+      ...prevConfig,
+      originalTitleLanguages: (prevConfig.originalTitleLanguages || []).filter(l => l !== value),
+    }));
   };
 
   const handleIncludeAdultChange = (checked: boolean) => {
@@ -236,6 +251,49 @@ export function GeneralSettings() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2 p-3 rounded-lg">
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div className="min-w-[12rem] flex-1">
+                  <Label htmlFor="original-title-languages" className="font-medium">Original Title Languages</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Always show untranslated titles for these original languages, regardless of Display Language above.
+                  </p>
+                </div>
+                <Select value="" onValueChange={handleAddOriginalTitleLanguage}>
+                  <SelectTrigger id="original-title-languages" className="w-full sm:w-[200px] shrink-0">
+                    <SelectValue placeholder="Add a language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {languageOptions
+                      .filter(opt => opt.value !== 'original' && !(config.originalTitleLanguages || []).includes(opt.value))
+                      .map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {config.originalTitleLanguages && config.originalTitleLanguages.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {config.originalTitleLanguages.map(value => {
+                    const opt = languageOptions.find(o => o.value === value);
+                    return (
+                      <Badge key={value} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                        <span>{opt?.label || value}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveOriginalTitleLanguage(value)}
+                          className="rounded-sm p-0.5 hover:bg-background/50"
+                          aria-label={`Remove ${opt?.label || value}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 p-3 rounded-lg hover:bg-accent/50 transition-colors">

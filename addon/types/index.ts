@@ -2,6 +2,8 @@
 
 export interface UserConfig {
   language?: string;
+  /** Original languages (e.g. ["ar-SA", "it-IT"]) whose titles always show untranslated, regardless of `language`. */
+  originalTitleLanguages?: string[];
   /** Playback is reported by the client, so the subtitle trigger is not used. */
   playbackReporting?: boolean;
   providers?: {
