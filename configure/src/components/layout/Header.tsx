@@ -12,7 +12,7 @@ const LazyChangelogModal = lazy(() =>
 );
 
 export function Header() {
-  const { addonVersion, config, setConfig, resetConfig, auth, setAuth } = useConfig();
+  const { addonVersion, aerVersion, config, setConfig, resetConfig, auth, setAuth } = useConfig();
   const isLoggedIn = auth.authenticated;
   const [authTransitioning, setAuthTransitioning] = useState(false);
   const [shouldLoadChangelog, setShouldLoadChangelog] = useState(false);
@@ -425,7 +425,9 @@ export function Header() {
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
-                  <span className="text-sm text-muted-foreground shrink-0 max-w-[120px] sm:max-w-none truncate" title={`v${addonVersion}`}>v{addonVersion}</span>
+                  <span className="text-sm text-muted-foreground shrink-0 max-w-[200px] sm:max-w-none truncate" title={aerVersion ? `v${addonVersion} · ${aerVersion}` : `v${addonVersion}`}>
+                    v{addonVersion}{aerVersion ? ` · ${aerVersion}` : ''}
+                  </span>
                 </>
               )}
             </div>
