@@ -10,4 +10,24 @@ export function resolveApiLanguage(language: string, fallback: string = 'en-US')
   return isOriginalTitleMode(language) ? fallback : language;
 }
 
-module.exports = { isOriginalTitleMode, resolveApiLanguage };
+/**
+ * True when a title should be shown in its own original language: either
+ * Display Language is set to "Original Title" outright, or the item's
+ * original language is in the user's per-language allowlist (e.g. always
+ * show Arabic- and Italian-original titles untranslated, everything else
+ * in the normal Display Language).
+ */
+export function shouldUseOriginalTitle(
+  language: string,
+  originalLanguage?: string | null,
+  originalTitleLanguages?: string[] | null
+): boolean {
+  if (isOriginalTitleMode(language)) return true;
+  if (!originalLanguage || !Array.isArray(originalTitleLanguages) || originalTitleLanguages.length === 0) {
+    return false;
+  }
+  const base = originalLanguage.toLowerCase();
+  return originalTitleLanguages.some(l => l?.split('-')[0]?.toLowerCase() === base);
+}
+
+module.exports = { isOriginalTitleMode, resolveApiLanguage, shouldUseOriginalTitle };

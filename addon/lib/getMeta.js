@@ -1559,7 +1559,8 @@ async function buildTmdbMovieResponse(stremioId, movieData, language, config, us
     title,
     'movie',
     movieData.original_language,
-    movieData.original_title
+    movieData.original_title,
+    config.originalTitleLanguages
   );
   const certifications = buildCertificationMap({ tmdbMovie: movieData.release_dates });
   const certification = certifications?.US ?? null;
@@ -1990,7 +1991,8 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
     finalName,
     'series',
     seriesData.original_language,
-    seriesData.original_name
+    seriesData.original_name,
+    config.originalTitleLanguages
   );
 
   const releaseInfo = Utils.buildReleaseInfo(

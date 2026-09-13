@@ -2,6 +2,8 @@
 
 export interface UserConfig {
   language?: string;
+  /** Original languages (e.g. ["ar-SA", "it-IT"]) whose titles always show untranslated, regardless of `language`. */
+  originalTitleLanguages?: string[];
   /** Install URL of a stream addon the Jellyfin server delegates playback to. */
   jellyfinStreamUrl?: string;
   jellyfinLatestRows?: boolean;
