@@ -24,6 +24,8 @@ interface ConfigContextType {
   config: AppConfig;
   setConfig: React.Dispatch<React.SetStateAction<AppConfig>>;
   addonVersion: string;
+  /** This fork's own version tracker, independent of addonVersion. */
+  aerVersion: string;
   resetConfig: () => Promise<void>;
   auth: AuthState;
   setAuth: React.Dispatch<React.SetStateAction<AuthState>>;
@@ -290,6 +292,7 @@ function getManifestFingerprint(config: AppConfig): string {
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [addonVersion, setAddonVersion] = useState<string>(' ');
+  const [aerVersion, setAerVersion] = useState<string>('');
   const [preloadedConfig] = useState(initializeConfigFromSources);
   const [auth, setAuth] = useState<AuthState>({ authenticated: false, userUUID: null, password: null });
   const [config, setConfig] = useState<AppConfig>(() => {
@@ -468,6 +471,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         if (!isMounted) return;
         const envApiKeys = await envResponse.json();
         setAddonVersion(envApiKeys.addonVersion || ' ');
+        setAerVersion(envApiKeys.aerVersion || '');
         setHasBuiltInTvdb(!!envApiKeys.hasBuiltInTvdb);
         setHasBuiltInTmdb(!!envApiKeys.hasBuiltInTmdb);
         setHasBuiltInMdblist(!!envApiKeys.hasBuiltInMdblist);
@@ -554,7 +558,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ConfigContext.Provider value={{ config, setConfig, addonVersion, resetConfig, auth, setAuth, hasBuiltInTvdb, hasBuiltInTmdb, hasBuiltInMdblist, hasBuiltInGemini, catalogTTL, maxCatalogs, collectionImportCatalogCap, maxEpisodeOrders, refreshInstanceLimits, isLoading, sessionId, setSessionId, anilistRequiresAuth, traktSearchEnabled, simklSearchEnabled, lumiereEnabled, aiCatalogMaxPerRequest, manifestFingerprint, manifestChangedSinceInstall, markManifestInstalled }}>
+    <ConfigContext.Provider value={{ config, setConfig, addonVersion, aerVersion, resetConfig, auth, setAuth, hasBuiltInTvdb, hasBuiltInTmdb, hasBuiltInMdblist, hasBuiltInGemini, catalogTTL, maxCatalogs, collectionImportCatalogCap, maxEpisodeOrders, refreshInstanceLimits, isLoading, sessionId, setSessionId, anilistRequiresAuth, traktSearchEnabled, simklSearchEnabled, lumiereEnabled, aiCatalogMaxPerRequest, manifestFingerprint, manifestChangedSinceInstall, markManifestInstalled }}>
       {children}
     </ConfigContext.Provider>
   );
