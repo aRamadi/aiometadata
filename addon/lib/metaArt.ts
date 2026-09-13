@@ -1,5 +1,6 @@
 import { buildProxyArtUrl } from './posterCache/proxyArt';
 import { extractIdsFromMeta } from '../utils/metaIds';
+import { resolveApiLanguage } from '../utils/resolveApiLanguage';
 
 export function applyMetaArt(meta: any, config: any, type: string, userAgent: string): void {
   const host = process.env.HOST_NAME.startsWith('http') ? process.env.HOST_NAME : `https://${process.env.HOST_NAME}`;
@@ -15,7 +16,7 @@ export function applyMetaArt(meta: any, config: any, type: string, userAgent: st
       if (proxyApiKey) {
         const proxyId = ids.imdbId || (ids.tmdbId ? `tmdb:${ids.tmdbId}` : (ids.tvdbId ? `tvdb:${ids.tvdbId}` : null));
         if (proxyId) {
-          meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: metaType, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: config.language });
+          meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: metaType, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: resolveApiLanguage(config.language) });
         }
       } else {
         const resolved = resolveCustomArtUrl(metaPosterPattern, ids, metaType, config, { userAgent, shape: posterShapeOf(meta) });

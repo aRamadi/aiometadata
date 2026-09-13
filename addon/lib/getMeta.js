@@ -18,6 +18,7 @@ const e = require("express");
 const { resolveAllIds } = require('./id-resolver');
 const { cacheWrapMeta, cacheWrapJikanApi, cacheWrapGlobal } = require('./getCache');
 const { deriveStabilityStamp } = require('./metaColdStore');
+const { resolveApiLanguage } = require('../utils/resolveApiLanguage');
 function CATALOG_TTL() { return parseInt(process.env.CATALOG_TTL || 1 * 24 * 60 * 60, 10); }
 const kitsu = require('./kitsu');
 var nameToImdb = require("name-to-imdb");
@@ -600,7 +601,7 @@ async function processCollectionEntities(movieEntities, seriesEntities, langCode
     if (firstSeries) {
       const [seriesData, episodesData] = await Promise.all([
         tvdb.getSeriesExtended(firstSeries.seriesId, config),
-        tvdb.getSeriesEpisodes(firstSeries.seriesId, language, config.tvdbSeasonType, config)
+        tvdb.getSeriesEpisodes(firstSeries.seriesId, resolveApiLanguage(language), config.tvdbSeasonType, config)
       ]);
 
       if (seriesData) {
@@ -775,12 +776,13 @@ async function getMovieMeta(stremioId, preferredProvider, language, config, user
   // Try TMDB as fallback
   if (allIds?.tmdbId) {
     try {
-      const langCode = language.split('-')[0];
+      const apiLanguage = resolveApiLanguage(language);
+      const langCode = apiLanguage.split('-')[0];
       const imageLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const movieData = await moviedb.movieInfo({ 
         id: allIds.tmdbId, 
-        language, 
+        language: apiLanguage, 
         append_to_response: "videos,credits,external_ids,images,translations,watch/providers,release_dates,keywords", 
         include_image_language: imageLanguages,
         include_video_language: videoLanguages
@@ -834,12 +836,13 @@ async function getSeriesMeta(preferredProvider, stremioId, language, config, use
   // Try preferred provider
   if (preferredProvider === 'tmdb' && allIds?.tmdbId) {
     try {
-      const langCode = language.split('-')[0];
+      const apiLanguage = resolveApiLanguage(language);
+      const langCode = apiLanguage.split('-')[0];
       const imageLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const seriesData = await moviedb.tvInfo({ 
         id: allIds.tmdbId, 
-        language, 
+        language: apiLanguage, 
         append_to_response: "videos,credits,external_ids,images,translations,watch/providers,content_ratings,keywords", 
         include_image_language: imageLanguages,
         include_video_language: videoLanguages
@@ -894,9 +897,10 @@ async function getSeriesMeta(preferredProvider, stremioId, language, config, use
   // Try TVDB as fallback
   if (allIds?.tvdbId) {
     try {
+      const tvdbLanguage = resolveApiLanguage(language);
       let [seriesData, episodes] = await Promise.all([
         tvdb.getSeriesExtended(allIds.tvdbId, config),
-        includeVideos ? tvdb.getSeriesEpisodes(allIds.tvdbId, language, config.tvdbSeasonType, config) : null
+        includeVideos ? tvdb.getSeriesEpisodes(allIds.tvdbId, tvdbLanguage, config.tvdbSeasonType, config) : null
       ]);
 
       if (!seriesData && allIds?.imdbId) {
@@ -906,7 +910,7 @@ async function getSeriesMeta(preferredProvider, stremioId, language, config, use
           allIds.tvdbId = recoveredId;
           [seriesData, episodes] = await Promise.all([
             tvdb.getSeriesExtended(recoveredId, config),
-            includeVideos ? tvdb.getSeriesEpisodes(recoveredId, language, config.tvdbSeasonType, config) : null
+            includeVideos ? tvdb.getSeriesEpisodes(recoveredId, tvdbLanguage, config.tvdbSeasonType, config) : null
           ]);
         }
       }
@@ -928,12 +932,13 @@ async function getSeriesMeta(preferredProvider, stremioId, language, config, use
   
   if (provider === 'tmdb' && id) {
     try {
-      const langCode = language.split('-')[0];
+      const apiLanguage = resolveApiLanguage(language);
+      const langCode = apiLanguage.split('-')[0];
       const imageLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const seriesData = await moviedb.tvInfo({ 
         id, 
-        language, 
+        language: apiLanguage, 
         append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", 
         include_image_language: imageLanguages,
         include_video_language: videoLanguages
@@ -1004,26 +1009,28 @@ async function getAnimeMeta(preferredProvider, stremioId, language, config, user
     if (preferredProvider && preferredProvider !== 'kitsu' && preferredProvider !== 'mal') {
       logger.debug(`[AnimeMeta] Attempting preferred provider '${preferredProvider}' for ${stremioId}.`);
       if (preferredProvider === 'tmdb' && allIds?.tmdbId) {
-        const langCode = language.split('-')[0];
+        const apiLanguage = resolveApiLanguage(language);
+        const langCode = apiLanguage.split('-')[0];
         const imageLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
         const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
         if (type === 'movie') {
-          const movieData = await moviedb.movieInfo({ id: allIds.tmdbId, language, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
+          const movieData = await moviedb.movieInfo({ id: allIds.tmdbId, language: apiLanguage, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
           if (movieData) {
           return await buildTmdbMovieResponse(stremioId, movieData, language, config, userUUID, { allIds }, isAnime);
           }
         } else {
-          const seriesData = await moviedb.tvInfo({ id: allIds.tmdbId, language, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
+          const seriesData = await moviedb.tvInfo({ id: allIds.tmdbId, language: apiLanguage, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
           if (seriesData) {
           return await buildTmdbSeriesResponse(stremioId, seriesData, language, config, userUUID, { allIds }, isAnime, includeVideos);
           }
         }
       }
       if (preferredProvider === 'tvdb' && allIds?.tvdbId) {
+        const tvdbLanguage = resolveApiLanguage(language);
         if (type === 'series') {
           let [seriesData, episodes] = await Promise.all([
             tvdb.getSeriesExtended(allIds.tvdbId, config),
-            includeVideos ? tvdb.getSeriesEpisodes(allIds.tvdbId, language, config.tvdbSeasonType, config) : null
+            includeVideos ? tvdb.getSeriesEpisodes(allIds.tvdbId, tvdbLanguage, config.tvdbSeasonType, config) : null
           ]);
           if (!seriesData && allIds?.imdbId) {
             const recoveredId = await recoverTvdbIdViaImdb(allIds.imdbId, 'series', config, allIds.tvdbId);
@@ -1032,7 +1039,7 @@ async function getAnimeMeta(preferredProvider, stremioId, language, config, user
               allIds.tvdbId = recoveredId;
               [seriesData, episodes] = await Promise.all([
                 tvdb.getSeriesExtended(recoveredId, config),
-                includeVideos ? tvdb.getSeriesEpisodes(recoveredId, language, config.tvdbSeasonType, config) : null
+                includeVideos ? tvdb.getSeriesEpisodes(recoveredId, tvdbLanguage, config.tvdbSeasonType, config) : null
               ]);
             }
           }
@@ -1155,16 +1162,17 @@ async function getAnimeMeta(preferredProvider, stremioId, language, config, user
   if (preferredProvider !== 'tmdb' && allIds?.tmdbId) {
     try {
       logger.debug(`[AnimeMeta] Falling back to TMDB for ${stremioId} (TMDB ID: ${allIds.tmdbId})`);
-      const langCode = language.split('-')[0];
+      const apiLanguage = resolveApiLanguage(language);
+      const langCode = apiLanguage.split('-')[0];
       const imageLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
       if (type === 'movie') {
-        const movieData = await moviedb.movieInfo({ id: allIds.tmdbId, language, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
+        const movieData = await moviedb.movieInfo({ id: allIds.tmdbId, language: apiLanguage, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
         if (movieData) {
           return _markDegraded(await buildTmdbMovieResponse(stremioId, movieData, language, config, userUUID, { allIds }, isAnime), degraded);
         }
       } else {
-        const seriesData = await moviedb.tvInfo({ id: allIds.tmdbId, language, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
+        const seriesData = await moviedb.tvInfo({ id: allIds.tmdbId, language: apiLanguage, append_to_response: "videos,credits,external_ids,images,translations,watch/providers,keywords", include_image_language: imageLanguages, include_video_language: videoLanguages }, config);
         if (seriesData) {
           return _markDegraded(await buildTmdbSeriesResponse(stremioId, seriesData, language, config, userUUID, { allIds }, isAnime, includeVideos), degraded);
         }
@@ -1213,10 +1221,13 @@ async function buildImdbSeriesResponse(stremioId, imdbData, enrichmentData = {},
 
   let poster, background, logoUrl;
 
-  const langCode = config.language.split('-')[0];
+  // IMDB-sourced meta has no per-language title, so config.language here only
+  // ever drives this TMDB augmentation call and certification/trailer matching.
+  const apiLanguage = resolveApiLanguage(config.language);
+  const langCode = apiLanguage.split('-')[0];
   const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
   const seriesInfoPromise = tmdbId
-    ? moviedb.tvInfo({ id: tmdbId, language: config.language, append_to_response: "content_ratings,videos,keywords", include_video_language: videoLanguages }, config)
+    ? moviedb.tvInfo({ id: tmdbId, language: apiLanguage, append_to_response: "content_ratings,videos,keywords", include_video_language: videoLanguages }, config)
     : Promise.resolve(null);
 
   let seriesData;
@@ -1243,7 +1254,7 @@ async function buildImdbSeriesResponse(stremioId, imdbData, enrichmentData = {},
   }
 
   const fallbackPosterUrl = poster || `${host}/missing_poster.png`;
-  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'series', `imdb:${imdbId}`, fallbackPosterUrl, config.language, config);
+  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'series', `imdb:${imdbId}`, fallbackPosterUrl, apiLanguage, config);
 
   const _rawPosterUrl = fallbackPosterUrl;
   // Process credits in place
@@ -1263,7 +1274,7 @@ async function buildImdbSeriesResponse(stremioId, imdbData, enrichmentData = {},
     if(seriesData){
       imdbData.keywords = moviedb.keywordNamesOf(seriesData);
       const certification = Utils.getTmdbTvCertificationForCountry(seriesData.content_ratings);
-      const userCountry = config.language?.split('-')[1];
+      const userCountry = apiLanguage?.split('-')[1];
       const certificationLocal = userCountry && userCountry !== 'US' ? (Utils.getTmdbTvCertificationForCountry(seriesData.content_ratings, userCountry) || certification) : certification;
       imdbData.app_extras.certification = certification;
       imdbData.app_extras.certificationLocal = certificationLocal;
@@ -1281,7 +1292,7 @@ async function buildImdbSeriesResponse(stremioId, imdbData, enrichmentData = {},
         const certificationLink = {
           name: certificationLocal,
           category: 'Genres',
-          url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/tv/${tmdbId}?language=${config.language}`
+          url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/tv/${tmdbId}?language=${apiLanguage}`
         };
         if (!Array.isArray(imdbData.links)) imdbData.links = [];
         imdbData.links.unshift(certificationLink);
@@ -1306,10 +1317,13 @@ async function buildImdbMovieResponse(stremioId, imdbData, enrichmentData = {}, 
 
   let poster, background, logoUrl;
 
-  const langCode = config.language.split('-')[0];
+  // IMDB-sourced meta has no per-language title, so config.language here only
+  // ever drives this TMDB augmentation call and certification/trailer matching.
+  const apiLanguage = resolveApiLanguage(config.language);
+  const langCode = apiLanguage.split('-')[0];
   const videoLanguages = Array.from(new Set([langCode, 'en', 'null'])).join(',');
   const movieInfoPromise = tmdbId
-    ? moviedb.movieInfo({ id: tmdbId, language: config.language, append_to_response: "release_dates,videos,keywords", include_video_language: videoLanguages }, config)
+    ? moviedb.movieInfo({ id: tmdbId, language: apiLanguage, append_to_response: "release_dates,videos,keywords", include_video_language: videoLanguages }, config)
     : Promise.resolve(null);
 
   let movieData;
@@ -1336,7 +1350,7 @@ async function buildImdbMovieResponse(stremioId, imdbData, enrichmentData = {}, 
   }
 
   const _rawPosterUrl = poster || `${host}/missing_poster.png`;
-  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'movie', `imdb:${imdbId}`, poster, config.language, config);
+  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'movie', `imdb:${imdbId}`, poster, apiLanguage, config);
 
   processCreditsPhotos(imdbData.credits_cast);
   processCreditsPhotos(imdbData.credits_crew);
@@ -1356,7 +1370,7 @@ async function buildImdbMovieResponse(stremioId, imdbData, enrichmentData = {}, 
     imdbData.released = movieData.release_date ? resolveReleaseTimestamp(movieData.release_date, { originCountry: movieData.production_countries?.[0]?.iso_3166_1 }) : null;
     imdbData.app_extras.releaseDates = movieData.release_dates;
     const certification = Utils.getTmdbMovieCertificationForCountry(movieData.release_dates);
-    const userCountry = config.language?.split('-')[1];
+    const userCountry = apiLanguage?.split('-')[1];
     const certificationLocal = userCountry && userCountry !== 'US' ? (Utils.getTmdbMovieCertificationForCountry(movieData.release_dates, userCountry) || certification) : certification;
     imdbData.app_extras.certification = certification;
     imdbData.app_extras.certificationLocal = certificationLocal;
@@ -1364,7 +1378,7 @@ async function buildImdbMovieResponse(stremioId, imdbData, enrichmentData = {}, 
       const certificationLink = {
         name: certificationLocal,
         category: 'Genres',
-        url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/movie/${tmdbId}?language=${config.language}`
+        url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/movie/${tmdbId}?language=${apiLanguage}`
       };
       if (!Array.isArray(imdbData.links)) imdbData.links = [];
       imdbData.links.unshift(certificationLink);
@@ -1432,7 +1446,11 @@ async function buildTmdbMovieResponse(stremioId, movieData, language, config, us
   const imdbId = allIds?.imdbId;
   const tvdbId = allIds?.tvdbId;
   const castCount = config.castCount;
-  const langCode = language.split('-')[0];
+  // `language` may be the "original" sentinel here; every use below except the
+  // title/overview translation calls needs a real locale for TMDB image/country
+  // matching and links.
+  const apiLanguage = resolveApiLanguage(language);
+  const langCode = apiLanguage.split('-')[0];
   let credits = await ensureLatinTmdbCredits('movie', tmdbId, movieData.credits, config);
   if (!credits) {
     credits = { cast: [], crew: [] };
@@ -1470,7 +1488,7 @@ async function buildTmdbMovieResponse(stremioId, movieData, language, config, us
   }
   
   const imdbRating = imdbRatingValue || "N/A";
-  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'movie', `tmdb:${movieData.id}`, poster, language, config);
+  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'movie', `tmdb:${movieData.id}`, poster, apiLanguage, config);
   const kitsuId = allIds?.kitsuId;
   const idProvider = config.providers?.movie || 'imdb';
   const _rawPosterUrl = poster || `${host}/missing_poster.png`;
@@ -1498,14 +1516,14 @@ async function buildTmdbMovieResponse(stremioId, movieData, language, config, us
     movieData.original_title
   );
   const certification = Utils.getTmdbMovieCertificationForCountry(movieData.release_dates);
-  const userCountry = language?.split('-')[1];
+  const userCountry = apiLanguage?.split('-')[1];
   const certificationLocal = userCountry && userCountry !== 'US' ? (Utils.getTmdbMovieCertificationForCountry(movieData.release_dates, userCountry) || certification) : certification;
-  let links = Utils.buildLinks(imdbRating, imdbId, title, 'movie', movieData.genres, credits, language, castCount, userUUID);
+  let links = Utils.buildLinks(imdbRating, imdbId, title, 'movie', movieData.genres, credits, apiLanguage, castCount, userUUID);
   if (certification && config.displayAgeRating) {
     const certificationLink = {
       name: certificationLocal,
       category: 'Genres',
-      url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/movie/${tmdbId}?language=${language}`
+      url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/movie/${tmdbId}?language=${apiLanguage}`
     };
     links.unshift(certificationLink);
   }
@@ -1572,7 +1590,11 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
     else if (stremioId.startsWith('tt')) idProvider = 'imdb';
     else idProvider = 'imdb';
   }
-  const langCode = language.split('-')[0];
+  // `language` may be the "original" sentinel here; every use below except the
+  // title/overview translation calls needs a real locale for TMDB image/country
+  // matching, requests, and links.
+  const apiLanguage = resolveApiLanguage(language);
+  const langCode = apiLanguage.split('-')[0];
 
   const images = await Utils.mergeTmdbOriginalLanguageImages('tv', tmdbId, rawImages, originalLanguage, langCode, config);
   const selectedPoster = Utils.selectTmdbImageByLang(images?.posters, config, 'iso_639_1', originalLanguage);
@@ -1608,7 +1630,7 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
   // log arts 
   // logger.debug(`[TmdbSeriesMeta] poster: ${poster}, background: ${background}, logoUrl: ${logoUrl}`);
   
-  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'series', `tmdb:${tmdbId}`, poster, language, config);
+  const posterProxyUrl = Utils.buildPosterProxyUrl(host, 'series', `tmdb:${tmdbId}`, poster, apiLanguage, config);
   const imdbRating = imdbRatingValue || "N/A";
   const castCount = config.castCount;
   const _rawPosterUrl = poster || `${host}/missing_poster.png`;
@@ -1660,7 +1682,7 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
 
     const seasonsString = Utils.genSeasonsString(seasons);
     const seasonPromise = Promise.all(
-      seasonsString.map(el => moviedb.tvInfo({ id: tmdbId, language, append_to_response: el }, config))
+      seasonsString.map(el => moviedb.tvInfo({ id: tmdbId, language: apiLanguage, append_to_response: el }, config))
     );
 
     const [imdbMeta, seasonResponses] = await Promise.all([cinemetaPromise, seasonPromise]);
@@ -1937,14 +1959,14 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
   );
 
   const certification = Utils.getTmdbTvCertificationForCountry(seriesData.content_ratings);
-  const userCountry = language?.split('-')[1];
+  const userCountry = apiLanguage?.split('-')[1];
   const certificationLocal = userCountry && userCountry !== 'US' ? (Utils.getTmdbTvCertificationForCountry(seriesData.content_ratings, userCountry) || certification) : certification;
-  let links = [ ...Utils.buildLinks(imdbRating, imdbId, name, 'series', seriesData.genres, credits, language, castCount, userUUID)];
+  let links = [ ...Utils.buildLinks(imdbRating, imdbId, name, 'series', seriesData.genres, credits, apiLanguage, castCount, userUUID)];
   if (certification && config.displayAgeRating) {
     const certificationLink = {
       name: certificationLocal,
       category: 'Genres',
-      url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/tv/${tmdbId}?language=${language}`
+      url: imdbId ? `https://www.imdb.com/title/${imdbId}/parentalguide/` : `https://www.themoviedb.org/tv/${tmdbId}?language=${apiLanguage}`
     };
     links.unshift(certificationLink);
   }
@@ -2986,7 +3008,7 @@ async function buildAnimeResponse(stremioId, malData, language, characterData, e
           if (tmdbEpisodeMap.size > 0 && seasonSet.size > 0) {
             try {
               const tmdbId = mapping.themoviedb_id;
-              const language = config.language || 'en-US';
+              const language = resolveApiLanguage(config.language || 'en-US');
               const seasonsArray = Array.from(seasonSet).sort((a, b) => a - b);
 
               // Create season objects for genSeasonsString and chunk the requests
@@ -3444,7 +3466,7 @@ async function buildKitsuAnimeResponse(stremioId, kitsuData, genres, includeObje
           if (tmdbEpisodeMap.size > 0 && seasonSet.size > 0) {
             try {
               const tmdbId = mapping.themoviedb_id;
-              const language = config.language || 'en-US';
+              const language = resolveApiLanguage(config.language || 'en-US');
               const seasonsArray = Array.from(seasonSet).sort((a, b) => a - b);
 
               // Create season objects for genSeasonsString and chunk the requests
