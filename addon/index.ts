@@ -79,6 +79,7 @@ const jikan = require('./lib/mal');
 const buildInfo = require('./lib/buildInfo');
 const { clientDistDir, clientIndexPath, publicDir } = require('./lib/runtimePaths');
 const ADDON_VERSION = buildInfo.version;
+const AER_VERSION = buildInfo.aerVersion;
 const { withGlobalEpoch } = require('./lib/cacheEpoch');
 const idMapper = require('./lib/id-mapper');
 const wikiMappings = require('./lib/wiki-mapper.js');
@@ -648,6 +649,7 @@ const respond = function (req, res, data, opts?) {
       simklAuthMode: resolveSimklAuthMode(),
       customDescriptionBlurb: getSetting('CUSTOM_DESCRIPTION_BLURB'),
       addonVersion: ADDON_VERSION,
+      aerVersion: AER_VERSION,
       hasBuiltInTvdb: !!getSetting('BUILT_IN_TVDB_API_KEY'),
       hasBuiltInTmdb: !!getSetting('BUILT_IN_TMDB_API_KEY'),
       hasBuiltInMdblist: !!getSetting('BUILT_IN_MDBLIST_API_KEY'),
@@ -6313,7 +6315,8 @@ addon.get('/api/config/addon-info', (req, res) => {
 
   res.json({
     requiresAddonPassword: !!process.env.ADDON_PASSWORD,
-    addonVersion: ADDON_VERSION
+    addonVersion: ADDON_VERSION,
+    aerVersion: AER_VERSION
   });
 });
 
