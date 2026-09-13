@@ -1,6 +1,7 @@
 require("dotenv").config();
 const FanartTvApi = require('@fanart-tv/api');
 import { LRUCache } from 'lru-cache';
+import { resolveApiLanguage } from './resolveApiLanguage';
 const { cacheWrapGlobal } = require('../lib/getCache');
 const FANART_IMAGE_BASE = 'https://assets.fanart.tv/fanart/movies/';
 
@@ -248,7 +249,7 @@ interface FanartImage {
 function selectFanartImageByLang(images: FanartImage[], config: any, key: string = 'lang'): FanartImage | undefined {
   if (!Array.isArray(images) || images.length === 0) return undefined;
 
-  const targetLang = config.artProviders?.englishArtOnly ? 'en' : (config.language?.split('-')[0]?.toLowerCase() || 'en');
+  const targetLang = config.artProviders?.englishArtOnly ? 'en' : (resolveApiLanguage(config.language)?.split('-')[0]?.toLowerCase() || 'en');
 
   let filtered = images.filter(img => img[key] === targetLang);
   if (filtered.length === 0) filtered = images.filter(img => img[key] === 'en');

@@ -38,6 +38,7 @@ const database = require('./lib/database');
 const { loadConfigFromDatabase } = require('./lib/configApi');
 const { getTrending } = require("./lib/getTrending");
 const { resolveProxyRatingPosterUrl, parseAnimeCatalogMetaBatch } = require("./utils/parseProps");
+const { resolveApiLanguage } = require("./utils/resolveApiLanguage");
 const { extractIdsFromMeta, extractCanonicalIdFromDynamicUpNextId } = require("./utils/metaIds");
 const { sleep } = require("./utils/concurrency");
 const { resolveMdblistKey, mdblistCacheKey } = require("./utils/mdblistUtils");
@@ -5094,7 +5095,7 @@ addon.get("/stremio/:userUUID/catalog/:type/:id{/:extra}.json", async function (
           if (proxyApiKey) {
             const proxyId = ids.imdbId || (ids.tmdbId ? `tmdb:${ids.tmdbId}` : (ids.tvdbId ? `tvdb:${ids.tvdbId}` : null));
             if (proxyId) {
-              meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: type, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: config.language });
+              meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: type, id: proxyId, fallback: meta.poster, ratingKey: proxyApiKey, lang: resolveApiLanguage(config.language) });
             }
           } else {
             const resolved = resolveCustomArtUrl(posterPattern, ids, type, config);
@@ -5272,7 +5273,7 @@ addon.get("/stremio/:userUUID/meta/:type/:id.json", async function (req, res) {
           if (proxyApiKey) {
             const proxyId = ids.imdbId || (ids.tmdbId ? `tmdb:${ids.tmdbId}` : (ids.tvdbId ? `tvdb:${ids.tvdbId}` : null));
             if (proxyId) {
-              result.meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: metaType, id: proxyId, fallback: result.meta.poster, ratingKey: proxyApiKey, lang: config.language });
+              result.meta.poster = buildProxyArtUrl({ base: `${host}/poster-cache/proxy`, imageClass: 'poster', type: metaType, id: proxyId, fallback: result.meta.poster, ratingKey: proxyApiKey, lang: resolveApiLanguage(config.language) });
             }
           } else {
             const resolved = resolveCustomArtUrl(metaPosterPattern, ids, metaType, config, { userAgent });

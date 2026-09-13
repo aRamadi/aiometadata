@@ -13,6 +13,7 @@ const idMapper: any = require('./id-mapper');
 const kitsu: any = require('./kitsu');
 const { resolveAllIds }: any = require('./id-resolver');
 const { isAnime }: any = require("../utils/isAnime");
+const { resolveApiLanguage }: any = require("../utils/resolveApiLanguage");
 const { performGeminiSearch, resolveGeminiModel }: any = require('../utils/gemini-service');
 const { performOpenRouterSearch }: any = require('../utils/openrouter-service');
 import consola from 'consola';
@@ -2365,6 +2366,11 @@ function getProviderFromSearchId(searchId: string): string {
 
 async function getSearch(id: string, type: string, language: string, extra: any, config: any): Promise<{ metas: any[] }> {
   const searchStartTime = Date.now();
+  // `language` here only ever drives upstream API calls, image/certification
+  // selection, and cache keys within this file — title selection for TMDB
+  // results goes through parseMedia/processTitleTranslations, which reads
+  // config.language (the raw value) directly. So it's safe to resolve once here.
+  language = resolveApiLanguage(language);
 
   const queryText = extra?.search || extra?.genre_id || extra?.va_id || 'N/A';
 

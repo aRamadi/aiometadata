@@ -1,4 +1,5 @@
 export const languageOptions = [
+  { value: "original", label: "Original Title" },
   { value: "ab-AB", label: "Abkhazian" },
   { value: "aa-AA", label: "Afar" },
   { value: "af-AF", label: "Afrikaans" },

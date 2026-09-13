@@ -1,6 +1,7 @@
 
 const { buildProxyArtUrl } = require('./posterCache/proxyArt.js');
 const posterCacheConfig = require('./posterCache/config.js');
+const { resolveApiLanguage } = require('../utils/resolveApiLanguage');
 
 function extractIdsFromWarmerMeta(meta) {
   const ids = {};
@@ -45,7 +46,9 @@ function collectWarmupTargets(metas, config, fallbackType, deps) {
   const proxyArtBase = posterCacheConfig.getProxyArtWarmBase();
   const cacheProcessed = posterCacheConfig.isClassEnabled('processed');
   const cachePosters = posterCacheConfig.isClassEnabled('poster');
-  const language = config.language || 'en-US';
+  // Must match the resolved language buildPosterProxyUrl/resolveProxyRatingPosterUrl
+  // use when serving the real request, or cache keys will never hit.
+  const language = resolveApiLanguage(config.language || 'en-US');
   const selfOrigin = posterCacheConfig.getSelfOrigin();
   const metaFieldClasses = posterCacheConfig.META_FIELD_CLASSES;
   const cacheThumbnails = posterCacheConfig.isClassEnabled('thumbnail');

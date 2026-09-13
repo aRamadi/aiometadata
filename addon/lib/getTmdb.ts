@@ -21,6 +21,7 @@ import {
 } from './tmdbCacheNormalizers.js';
 import { LRUCache } from 'lru-cache';
 import { UserConfig } from '../types/index';
+import { resolveApiLanguage } from '../utils/resolveApiLanguage';
 
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
 const ACCOUNT_DETAILS_CACHE_MAX = 2000;
@@ -53,7 +54,7 @@ function selectTmdbImageByLang(images: TmdbImage[] | undefined, config: UserConf
   if (!Array.isArray(images) || images.length === 0) return undefined;
 
   const englishArtOnly = (config.artProviders as any)?.englishArtOnly;
-  const targetLang = englishArtOnly ? 'en' : (config.language?.split('-')[0]?.toLowerCase() || 'en');
+  const targetLang = englishArtOnly ? 'en' : (resolveApiLanguage(config.language)?.split('-')[0]?.toLowerCase() || 'en');
 
   let best: TmdbImage | null = null;
   let fallbackEn: TmdbImage | null = null;
@@ -170,7 +171,13 @@ function isLikelyImdbTitleMatch(candidateName: string | undefined, candidateYear
 
 async function makeTmdbRequest(endpoint: string, apiKey: string, params: Record<string, any> = {}, method = 'GET', body: any = null, config: UserConfig = {} as UserConfig): Promise<any> {
   if (!apiKey) throw new Error("TMDB API key is required.");
-  
+
+  // Last-resort safety net: "original" is our own Display Language sentinel,
+  // never a real TMDB locale, so it must never reach an actual request.
+  if (params.language) {
+    params = { ...params, language: resolveApiLanguage(params.language) };
+  }
+
   const queryParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) {
@@ -801,7 +808,7 @@ export async function getMovieWatchProviders(params: any, config: UserConfig) {
     24 * 60 * 60 
   );
   if (data?.results) {
-    const country = config.language?.split('-')[1] || 'US';
+    const country = resolveApiLanguage(config.language)?.split('-')[1] || 'US';
     const countryProviders = data.results[country];
     
     if (countryProviders) {
@@ -828,7 +835,7 @@ export async function getMovieWatchProviders(params: any, config: UserConfig) {
 
 export function getWatchProviders(data: any, config: UserConfig) {
   if (data?.results) {
-    const country = config.language?.split('-')[1] || 'US';
+    const country = resolveApiLanguage(config.language)?.split('-')[1] || 'US';
     const countryProviders = data.results[country];
     
     if (countryProviders) {
@@ -878,7 +885,7 @@ export async function getTvWatchProviders(params: any, config: UserConfig) {
     24 * 60 * 60 
   );
   if (data?.results) {
-    const country = config.language?.split('-')[1] || 'US';
+    const country = resolveApiLanguage(config.language)?.split('-')[1] || 'US';
     const countryProviders = data.results[country];
     if (countryProviders) {
         const providers: any[] = [];
