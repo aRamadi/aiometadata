@@ -898,6 +898,7 @@ function getMetaCacheContext(config: any, metaId: string, type: string | null, u
 
   const base = {
     language: config.language || 'en-US',
+    originalTitleLanguages: config.originalTitleLanguages || [],
     contentType: contentType || 'unknown',
   };
 
@@ -1427,6 +1428,7 @@ async function cacheWrapCatalog(userUUID: string, catalogKey: string, method: ()
 
   const catalogConfig: any = {
     ...(shouldExcludeLanguageForMAL ? {} : { language: config.language || 'en-US' }),
+    originalTitleLanguages: config.originalTitleLanguages || [],
     ...scopedProviders,
     sfw: config.sfw || false,
     includeAdult: config.includeAdult || false,
@@ -1692,6 +1694,7 @@ async function cacheWrapSearch(userUUID: string, searchKey: string, method: () =
 
   const searchConfig = {
     language: config.language || 'en-US',
+    originalTitleLanguages: config.originalTitleLanguages || [],
     searchProviders: config.search?.providers || {},
     searchNames: config.search?.searchNames || {},
     providerNames: config.search?.providerNames || {},
@@ -1750,6 +1753,7 @@ async function cacheWrapMeta(userUUID: string, metaId: string, method: () => Pro
 
    const metaConfig: any = {
      language: config.language || 'en-US',
+     originalTitleLanguages: config.originalTitleLanguages || [],
 
      blurThumbs: config.blurThumbs || false,
      showMetaProviderAttribution: config.showMetaProviderAttribution || false,
@@ -2467,6 +2471,7 @@ async function cacheWrapStaticCatalog(userUUID: string, catalogKey: string, meth
 
   const staticCatalogConfig = {
     language: config.language || 'en-US',
+    originalTitleLanguages: config.originalTitleLanguages || [],
 
     providers: config.providers || {},
     artProviders: config.artProviders || {},
