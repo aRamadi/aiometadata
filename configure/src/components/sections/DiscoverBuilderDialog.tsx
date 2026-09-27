@@ -509,6 +509,8 @@ const MAL_SORT_DIRECTION_OPTIONS = [
 ] as const;
 
 const NONE_VALUE = '__none__';
+// Release region that stops a release type from defaulting to the language's country.
+const WORLDWIDE_REGION = 'any';
 const MAX_VOTE_COUNT = 5000;
 const MAX_RUNTIME_MINUTES = 400;
 
@@ -4055,6 +4057,7 @@ export function DiscoverBuilderDialog({ isOpen, onClose, editingCatalog, customi
                             </SelectTrigger>
                             <SelectContent>
                             <SelectItem value={NONE_VALUE}>Any</SelectItem>
+                            <SelectItem value={WORLDWIDE_REGION}>Worldwide (release in any country)</SelectItem>
                             {sortedCountries.map(country => (
                               <SelectItem key={country.iso_3166_1} value={country.iso_3166_1}>
                                 {(country.english_name || country.iso_3166_1)} ({country.iso_3166_1.toUpperCase()})
