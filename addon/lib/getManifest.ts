@@ -1454,6 +1454,31 @@ async function getManifest(config: any, opts: { tags?: string[] } = {}): Promise
     }
   }
 
+  // Collection folders reuse the same catalog names ("Popular Movies" in the
+  // Netflix folder, the Horror folder, ...), and the manifest carries only the
+  // name. Tag each catalog with the first folder it sits in, so a client that
+  // lists catalogs flat can tell them apart. Stremio ignores the extra field.
+  const folderByCatalog = new Map<string, string>();
+  for (const collection of Array.isArray(config.collections) ? config.collections : []) {
+    for (const folder of Array.isArray(collection?.folders) ? collection.folders : []) {
+      const title = typeof folder?.title === 'string' ? folder.title.trim() : '';
+      if (!title) continue;
+      for (const source of Array.isArray(folder.sources) ? folder.sources : []) {
+        if (!source?.catalogId || !source?.type) continue;
+        const key = `${source.catalogId}:${source.type}`;
+        if (!folderByCatalog.has(key)) folderByCatalog.set(key, title);
+      }
+    }
+  }
+  if (folderByCatalog.size > 0) {
+    for (const catalog of catalogs as any[]) {
+      const suffix = `_${catalog.type}`;
+      const baseId = typeof catalog.id === 'string' && catalog.id.endsWith(suffix) ? catalog.id.slice(0, -suffix.length) : catalog.id;
+      const folder = folderByCatalog.get(`${catalog.id}:${catalog.type}`) ?? folderByCatalog.get(`${baseId}:${catalog.type}`);
+      if (folder) catalog.folder = folder;
+    }
+  }
+
   const isSearchEnabled = config.search?.enabled ?? true;
   const engineEnabled = config.search?.engineEnabled || {};
   const searchProviders = config.search?.providers || {};
