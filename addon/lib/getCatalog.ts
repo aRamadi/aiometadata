@@ -1827,13 +1827,17 @@ function sanitizeTmdbDiscoverParams(
     delete sanitized.first_air_date_year;
     delete sanitized.with_type;
 
+    // "any" is the worldwide choice: send no region and skip the language default.
+    const worldwide = String(sanitized.region || '').toLowerCase() === 'any';
+    if (worldwide) delete sanitized.region;
+
     if (sanitized.with_release_type) {
       // Only release_date follows with_release_type; primary_release_date ignores it.
       if (typeof sanitized.sort_by === 'string' && sanitized.sort_by.startsWith('primary_release_date.')) {
         sanitized.sort_by = sanitized.sort_by.replace('primary_release_date.', 'release_date.');
       }
       // With no region the type matches a release in any country.
-      if (!sanitized.region) {
+      if (!sanitized.region && !worldwide) {
         const country = String(language || '').split('-')[1];
         if (country) sanitized.region = country.toUpperCase();
       }
