@@ -60,6 +60,11 @@ these only work with the fork's code changes:
 - **Deleted:** `tmdb.discover.movie.trending_movies.1iws4f9` (the Discover
   collection's all-genres "Trending Movies", which was really "most popular"
   and clashed with the real TMDB Trending).
+- **PostersPlus poster URL** (Settings → custom poster URL): has no
+  `imdb_id={imdb_id}` since 2026-09-28. AIOMetadata drops the whole URL when
+  a placeholder is empty, so titles with no IMDb id (web series) got no
+  PostersPlus poster; PostersPlus 1.2.0+ needs only `tmdb_id`. Keep it out if
+  the URL is ever regenerated in PostersPlus's configurator.
 - Relay's folder labels (**need change 7**): without it, Relay shows 50
   identical "Popular Movies" rows again.
 
