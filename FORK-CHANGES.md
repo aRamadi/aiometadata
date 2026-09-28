@@ -43,7 +43,7 @@ case `.env` is ever rebuilt from `.env.example`:
 | `NODE_OPTIONS` | `--max-old-space-size=1024` | |
 | `TZ` | `America/New_York` | |
 | `POSTER_CACHE_ALLOWED_HOSTS` | `postersplus` | Lets the poster proxy reach the PostersPlus container |
-| `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"<your PostersPlus domain>","policy":"custom","ttl":"12h"}]` (the real domain is in `.env`) | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
+| `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"postersplus","policy":"custom","ttl":"12h"}]` | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
 
 ## 3. Your catalog setup (stored in AIOMetadata's database)
 
@@ -60,7 +60,12 @@ these only work with the fork's code changes:
 - **Deleted:** `tmdb.discover.movie.trending_movies.1iws4f9` (the Discover
   collection's all-genres "Trending Movies", which was really "most popular"
   and clashed with the real TMDB Trending).
-- **PostersPlus poster URL** (Settings → custom poster URL): has no
+- **PostersPlus poster URL** (Settings → custom poster URL): starts
+  `http://postersplus:8000/poster?…` — the container's own address, which the
+  poster proxy fetches from inside Docker (`POSTER_CACHE_ALLOWED_HOSTS`),
+  instead of going out through the public domain. It has no `mdblist_key`
+  (AIOMetadata has no MDBList key, and an empty placeholder drops the URL;
+  PostersPlus uses its own) and no
   `imdb_id={imdb_id}` since 2026-09-28. AIOMetadata drops the whole URL when
   a placeholder is empty, so titles with no IMDb id (web series) got no
   PostersPlus poster; PostersPlus 1.2.0+ needs only `tmdb_id`. Keep it out if
