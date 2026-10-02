@@ -9,6 +9,53 @@ const consola = require('consola');
 
 const logger = consola.withTag('GetTrending'); 
 
+// --- Original-language filter (fork change) --------------------------------
+// TMDB's trending chart has no language filter. TMDB_TRENDING_ORIGINAL_LANGUAGES
+// (comma-separated ISO 639-1 codes, e.g. "en") keeps only titles originally in
+// one of them. Pages stay a full 20: page n is the (n-1)*20..n*20 slice of the
+// filtered chart, read from TMDB page 1 on, so page boundaries never shift.
+// Unset or empty: the chart as TMDB has it.
+const TRENDING_PAGE_SIZE = 20;
+// TMDB pages read at most for one catalog page: enough while a third of the
+// chart is in the wanted languages.
+const TRENDING_MAX_PAGES_PER_PAGE = 3;
+const TRENDING_PAGE_TTL_MS = 10 * 60 * 1000;
+const trendingPageCache = new Map<string, { at: number; value: any }>();
+
+function trendingOriginalLanguages(): string[] {
+  return (process.env.TMDB_TRENDING_ORIGINAL_LANGUAGES || '')
+    .split(',')
+    .map((code) => code.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** One page of TMDB's trending chart, kept for a few minutes: reading page 3
+ * of the filtered chart reads TMDB pages 1 and 2 again. */
+async function trendingChartPage(parameters: any, page: number, config: UserConfig): Promise<any> {
+  const key = `${parameters.media_type}|${parameters.time_window}|${parameters.language}|${page}`;
+  const hit = trendingPageCache.get(key);
+  if (hit && Date.now() - hit.at < TRENDING_PAGE_TTL_MS) return hit.value;
+  const value = await moviedb.trending({ ...parameters, page }, config);
+  trendingPageCache.set(key, { at: Date.now(), value });
+  if (trendingPageCache.size > 500) trendingPageCache.delete(trendingPageCache.keys().next().value as string);
+  return value;
+}
+
+/** The trending chart's page `page`, filtered to `languages` (see above). */
+async function filteredTrendingPage(parameters: any, page: number, languages: string[], config: UserConfig): Promise<any> {
+  const wanted = page * TRENDING_PAGE_SIZE;
+  const kept: any[] = [];
+  let totalPages = Infinity;
+  for (let tmdbPage = 1; kept.length < wanted && tmdbPage <= Math.min(totalPages, page * TRENDING_MAX_PAGES_PER_PAGE); tmdbPage++) {
+    const res = await trendingChartPage(parameters, tmdbPage, config);
+    totalPages = res?.total_pages ?? tmdbPage;
+    for (const item of res?.results || []) {
+      if (languages.includes(String(item.original_language || '').toLowerCase())) kept.push(item);
+    }
+  }
+  return { results: kept.slice((page - 1) * TRENDING_PAGE_SIZE, wanted) };
+}
+
 async function getTrending(type: string, language: string, page: number, genre: string, config: UserConfig, userUUID: string, includeVideos: boolean = false): Promise<{ metas: any[] }> {
   const startTime = performance.now();
   try {
@@ -19,7 +66,10 @@ async function getTrending(type: string, language: string, page: number, genre: 
     const parameters = { media_type, time_window, language, page };
     
     const tmdbStartTime = performance.now();
-    const res: any = await moviedb.trending(parameters, config);
+    const languages = trendingOriginalLanguages();
+    const res: any = languages.length
+      ? await filteredTrendingPage(parameters, Number(page) || 1, languages, config)
+      : await moviedb.trending(parameters, config);
     const tmdbTime = performance.now() - tmdbStartTime;
     logger.debug(`[getTrending] TMDB trending fetch took ${tmdbTime.toFixed(2)}ms`);
     
