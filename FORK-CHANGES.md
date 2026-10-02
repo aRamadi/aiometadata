@@ -45,7 +45,7 @@ case `.env` is ever rebuilt from `.env.example`:
 | `TZ` | `America/New_York` | |
 | `POSTER_CACHE_ALLOWED_HOSTS` | `postersplus` | Lets the poster proxy reach the PostersPlus container |
 | `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"postersplus","policy":"custom","ttl":"12h"}]` | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
-| `TMDB_TRENDING_ORIGINAL_LANGUAGES` | `en` | Added 2026-10-02 (**needs change 8**): Trending catalogs keep only English-language titles. Comma-separated ISO 639-1 codes (`en,fr`); empty or missing shows the full worldwide chart |
+| `TMDB_TRENDING_ORIGINAL_LANGUAGES` | `en,ar` | Added 2026-10-02 (**needs change 8**): Trending catalogs keep only English- and Arabic-language titles (Arabic added the same day). Comma-separated ISO 639-1 codes (`en,fr`); empty or missing shows the full worldwide chart |
 
 ## 3. Your catalog setup (stored in AIOMetadata's database)
 
@@ -129,5 +129,5 @@ After updating, check:
    "Popular Movies · Netflix".
 5. The next morning, `~/aiometadata/flush-catalog-cache.log` shows pages
    cleared.
-6. Trending Movies / Series list only English titles (with
-   `TMDB_TRENDING_ORIGINAL_LANGUAGES=en` in `.env`).
+6. Trending Movies / Series list only English and Arabic titles (with
+   `TMDB_TRENDING_ORIGINAL_LANGUAGES=en,ar` in `.env`): English and Arabic titles.
