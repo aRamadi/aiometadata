@@ -10,11 +10,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the seven code changes as `000N-*.patch` files, one per commit, oldest
+  and the eight code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file as an eighth
   commit (`docs: ...`), which a rebase simply carries along.
 
-## 1. Code changes (7 commits)
+## 1. Code changes (8 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -25,6 +25,7 @@ an update. Written 2026-09-27.
 | 5 | **Cache follows the Original Title Languages list** | Editing the list takes effect at once instead of serving titles cached under the old list | `addon/lib/getCache.ts` |
 | 6 | **Worldwide release region** (2026-09-27) | **Release Region → "Worldwide (release in any country)"** in the Discover builder. Stops a release-type filter (digital, physical…) from being narrowed to your language's country (US). Stored as `region: "any"` | `addon/lib/getCatalog.ts`, `configure/.../DiscoverBuilderDialog.tsx` |
 | 7 | **Catalogs carry their collection folder** (2026-09-27) | Each catalog in the manifest gets a `folder` field with the title of the collection folder it sits in. Relay uses it to label repeated names ("Popular Movies · Netflix"). Stremio and AIOStreams ignore it | `addon/lib/getManifest.ts` |
+| 8 | **Trending by original language** (2026-10-02) | TMDB Trending Movies / Series keep only titles originally in the languages listed in `TMDB_TRENDING_ORIGINAL_LANGUAGES` (`en` here: no Korean, Hindi, Japanese...), in TMDB's own trending order. Each page stays 20 titles (page n is that slice of the filtered chart, read from TMDB page 1 on; chart pages kept 10 minutes). Unset: the worldwide chart, unchanged. TMDB's chart has no language filter, and a Discover catalog sorted by popularity matched only about half of it for movies and a quarter for shows | `addon/lib/getTrending.ts` |
 
 Commits 2, 3 and 5 are one feature (original titles) and depend on each
 other, in that order.
@@ -44,6 +45,7 @@ case `.env` is ever rebuilt from `.env.example`:
 | `TZ` | `America/New_York` | |
 | `POSTER_CACHE_ALLOWED_HOSTS` | `postersplus` | Lets the poster proxy reach the PostersPlus container |
 | `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"postersplus","policy":"custom","ttl":"12h"}]` | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
+| `TMDB_TRENDING_ORIGINAL_LANGUAGES` | `en` | Added 2026-10-02 (**needs change 8**): Trending catalogs keep only English-language titles. Comma-separated ISO 639-1 codes (`en,fr`); empty or missing shows the full worldwide chart |
 
 ## 3. Your catalog setup (stored in AIOMetadata's database)
 
@@ -92,7 +94,7 @@ onto the new upstream and redeploying. From a clone of the fork:
 git remote add upstream https://github.com/cedya77/aiometadata.git  # once
 git fetch upstream
 git checkout claude/cool-curie-t5fpt7
-git rebase upstream/dev        # replays the 7 commits on the new code
+git rebase upstream/dev        # replays the 8 commits on the new code
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata && docker compose up -d --build
@@ -113,6 +115,7 @@ on 2026-09-27):
 | 5 Cache key | Yes |
 | 6 Worldwide region | Yes |
 | 7 Catalog folder | Yes |
+| 8 Trending languages | Yes (checked against upstream `dev` `4b32ed58`, 2026-10-02) |
 
 After updating, check:
 
@@ -126,3 +129,5 @@ After updating, check:
    "Popular Movies · Netflix".
 5. The next morning, `~/aiometadata/flush-catalog-cache.log` shows pages
    cleared.
+6. Trending Movies / Series list only English titles (with
+   `TMDB_TRENDING_ORIGINAL_LANGUAGES=en` in `.env`).
