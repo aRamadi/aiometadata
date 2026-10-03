@@ -14,11 +14,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the eight code changes as `000N-*.patch` files, one per commit, oldest
+  and the nine code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file in `docs: ...`
   commits, which a rebase simply carries along.
 
-## 1. Code changes (8 commits)
+## 1. Code changes (9 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -30,6 +30,7 @@ an update. Written 2026-09-27.
 | 6 | **Worldwide release region** (2026-09-27) | **Release Region → "Worldwide (release in any country)"** in the Discover builder. Stops a release-type filter (digital, physical…) from being narrowed to your language's country (US). Stored as `region: "any"` | `addon/lib/getCatalog.ts`, `configure/.../DiscoverBuilderDialog.tsx` |
 | 7 | **Catalogs carry their collection folder** (2026-09-27) | Each catalog in the manifest gets a `folder` field with the title of the collection folder it sits in. Relay uses it to label repeated names ("Popular Movies · Netflix"). Stremio and AIOStreams ignore it | `addon/lib/getManifest.ts` |
 | 8 | **Trending by original language** (2026-10-02) | TMDB Trending Movies / Series keep only titles originally in the languages listed in `TMDB_TRENDING_ORIGINAL_LANGUAGES` (`en` here: no Korean, Hindi, Japanese...), in TMDB's own trending order. Each page stays 20 titles (page n is that slice of the filtered chart, read from TMDB page 1 on; chart pages kept 10 minutes). Unset: the worldwide chart, unchanged. TMDB's chart has no language filter, and a Discover catalog sorted by popularity matched only about half of it for movies and a quarter for shows | `addon/lib/getTrending.ts` |
+| 9 | **Trailers in the Original Title Languages** (2026-10-03) | TMDB is also asked for videos in the Original Title Languages (Arabic here). A title made in one of them shows its own trailers first, then English; anything else keeps the old choice (display language, else English, else any) but never takes an Arabic-tagged trailer. Most Arabic series' trailers on TMDB are tagged Arabic only, so before this they had none. No list set: unchanged | `addon/utils/resolveApiLanguage.ts` (`videoLanguagesFor`, `pickTrailers`), `addon/lib/getMeta.js` |
 
 Commits 2, 3 and 5 are one feature (original titles) and depend on each
 other, in that order.
@@ -47,8 +48,8 @@ case `.env` is ever rebuilt from `.env.example`:
 | `PREFER_SMALLER_LOGOS_TMDB` | `true` | |
 | `NODE_OPTIONS` | `--max-old-space-size=1024` | |
 | `TZ` | `America/New_York` | |
-| `POSTER_CACHE_ALLOWED_HOSTS` | `postersplus` | Lets the poster proxy reach the PostersPlus container |
-| `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"postersplus","policy":"custom","ttl":"12h"}]` | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
+| `POSTER_CACHE_ALLOWED_HOSTS` | `postersplus,postersplus-test` | Lets the poster proxy reach the PostersPlus containers. The proxy only fetches from private-network hosts listed here; `postersplus-test` (the AER test build, ~/postersplus-test) was added 2026-10-03 |
+| `POSTER_CACHE_PROVIDER_POLICIES` | `[{"domain":"postersplus",...,"ttl":"12h"},{"domain":"postersplus-test",...}]` | Added 2026-09-27: players re-fetch PostersPlus posters twice a day, so the "#N Today" trending badges stay current |
 | `TMDB_TRENDING_ORIGINAL_LANGUAGES` | `en,ar` | Added 2026-10-02 (**needs change 8**): Trending catalogs keep only English- and Arabic-language titles (Arabic added the same day). Comma-separated ISO 639-1 codes (`en,fr`); empty or missing shows the full worldwide chart |
 
 ## 3. Your catalog setup (stored in AIOMetadata's database)
@@ -113,7 +114,7 @@ git fetch upstream
 git checkout claude/cool-curie-t5fpt7
 git fetch upstream --tags
 git branch fork-<old version>-backup   # and push it, to roll back to
-git rebase vX.Y.Z              # the release tag; replays the 8 commits on it
+git rebase vX.Y.Z              # the release tag; replays the 9 commits on it
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata
@@ -139,6 +140,7 @@ Or from these patch files, on a fresh branch off the new upstream:
 | 6 Worldwide region | Yes |
 | 7 Catalog folder | Yes |
 | 8 Trending languages | Yes |
+| 9 Trailer languages | New 2026-10-03 (on v3.3.2); builds on 3 (the Original Title Languages list) |
 
 After updating, check:
 
@@ -154,3 +156,6 @@ After updating, check:
    cleared.
 6. Trending Movies / Series list only English and Arabic titles (with
    `TMDB_TRENDING_ORIGINAL_LANGUAGES=en,ar` in `.env`).
+7. An Arabic series whose only TMDB trailer is Arabic-tagged has one:
+   `curl -s localhost:3232/stremio/<uuid>/meta/series/tmdb:293993.json` has a
+   non-empty `trailers` (بنج كلي).
