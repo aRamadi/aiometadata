@@ -2502,6 +2502,27 @@ function getProviderFromSearchId(searchId: string): string {
   }
 }
 
+/** A series result that is one story of an anthology (TMDB's Monster: The
+ * Lizzie Borden Story, season 4 of IMDb's Monster) under its TMDB id, the
+ * entry its meta gives (see anthologySeason in getMeta.js), rather than the
+ * whole series' IMDb id. */
+async function withAnthologyStories(metas: any[], type: string, language: string, config: any): Promise<any[]> {
+  if (type !== 'series') return metas;
+  const { anthologySeason } = require('./getMeta');
+  return Promise.all(metas.map(async (meta: any) => {
+    if (!meta?._tmdbId || typeof meta.id !== 'string' || !meta.id.startsWith('tt')) return meta;
+    try {
+      const found = await anthologySeason(String(meta._tmdbId), meta.id, language, config, config.userUUID || '');
+      if (!found) return meta;
+      const { imdb_id: _imdb, _imdbId, _tvdbId, ...rest } = meta;
+      return { ...rest, id: `tmdb:${meta._tmdbId}`, _anthologyOf: { id: meta.id, season: found.season } };
+    } catch (e: any) {
+      logger.warn(`Anthology check for search result ${meta.id} failed: ${e.message}`);
+      return meta;
+    }
+  }));
+}
+
 async function getSearch(id: string, type: string, language: string, extra: any, config: any): Promise<{ metas: any[]; error?: string }> {
   const searchStartTime = Date.now();
   // `language` here only ever drives upstream API calls, image/certification
@@ -2761,7 +2782,7 @@ async function getSearch(id: string, type: string, language: string, extra: any,
       logger.info(`Filtered out ${beforeFilterCount - afterFilterCount} malformed search results`);
     }
 
-    return { metas };
+    return { metas: await withAnthologyStories(metas, type, language, config) };
   } catch (error: any) {
     const searchDuration = Date.now() - searchStartTime;
     logger.error(`Search failed after ${searchDuration}ms for "${queryText}" (${id}):`, error);

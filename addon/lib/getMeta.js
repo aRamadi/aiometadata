@@ -519,24 +519,32 @@ function seasonPremieredOn(videos, firstAirDate) {
   return best ? best.season : null;
 }
 
+/** The season of IMDb series `imdbId` that TMDB show `tmdbId` is, when it's
+ * one story of an anthology (see above); null for anything else. The series'
+ * episodes come along, for their ids. */
+async function anthologySeason(tmdbId, imdbId, language, config, userUUID) {
+  // TMDB listing this IMDb id for the show: they're the same show.
+  const external = await moviedb.tvExternalIds(tmdbId, config);
+  if (external?.imdb_id === imdbId) return null;
+  const own = await moviedb.tvInfo({ id: tmdbId, language: resolveApiLanguage(language) }, config);
+  const ownSeasons = (own?.seasons || []).filter(s => s.season_number > 0);
+  // An anthology entry is one story: one season.
+  if (!own?.first_air_date || ownSeasons.length !== 1) return null;
+  const whole = (await getMeta('series', language, imdbId, config, userUUID, true))?.meta;
+  // A series of one season is the same show under another id, not an anthology.
+  if (new Set((whole?.videos || []).map(v => v.season).filter(n => n > 0)).size < 2) return null;
+  const season = seasonPremieredOn(whole.videos, own.first_air_date);
+  return season ? { season, ownSeason: ownSeasons[0].season_number, whole } : null;
+}
+
 async function anthologySeasonMeta(stremioId, meta, language, config, userUUID, includeVideos) {
   if (!meta || !stremioId.startsWith('tmdb:') || typeof meta.id !== 'string' || !meta.id.startsWith('tt')) return meta;
   const tmdbId = stremioId.slice(5);
   try {
-    // TMDB listing this IMDb id for the show: they're the same show.
-    const external = await moviedb.tvExternalIds(tmdbId, config);
-    if (external?.imdb_id === meta.id) return meta;
+    const found = await anthologySeason(tmdbId, meta.id, language, config, userUUID);
+    if (!found) return meta;
+    const { season, ownSeason, whole } = found;
     const apiLanguage = resolveApiLanguage(language);
-    const own = await moviedb.tvInfo({ id: tmdbId, language: apiLanguage }, config);
-    const ownSeasons = (own?.seasons || []).filter(s => s.season_number > 0);
-    // An anthology entry is one story: one season.
-    if (!own?.first_air_date || ownSeasons.length !== 1) return meta;
-    const whole = (await getMeta('series', language, meta.id, config, userUUID, true))?.meta;
-    // A series of one season is the same show under another id, not an anthology.
-    if (new Set((whole?.videos || []).map(v => v.season).filter(n => n > 0)).size < 2) return meta;
-    const season = seasonPremieredOn(whole.videos, own.first_air_date);
-    if (!season) return meta;
-
     const langCode = apiLanguage.split('-')[0];
     const seriesData = await moviedb.tvInfo({
       id: tmdbId,
@@ -549,7 +557,6 @@ async function anthologySeasonMeta(stremioId, meta, language, config, userUUID, 
     // Only the TMDB id: an IMDb or TVDB id here would name the whole series.
     const story = await buildTmdbSeriesResponse(stremioId, seriesData, language, config, userUUID, { allIds: { tmdbId } }, false, includeVideos);
     if (!story) return meta;
-    const ownSeason = ownSeasons[0].season_number;
     const wholeIds = new Map();
     for (const video of whole.videos) {
       if (video.season === season) wholeIds.set(video.episode, video.id);
@@ -3696,4 +3703,4 @@ async function buildKitsuAnimeResponse(stremioId, kitsuData, genres, includeObje
   }
 }
 
-module.exports = { getMeta, resolveArtworkForProfile };
+module.exports = { getMeta, resolveArtworkForProfile, anthologySeason };
