@@ -1,4 +1,4 @@
-const { tvdbLanguageChain, pickArtwork }: any = require('../utils/tvdbLanguage');
+const { tvdbLanguageChain, pickArtwork, newestBackgroundsFirst }: any = require('../utils/tvdbLanguage');
 import { config } from 'dotenv';
 config();
 import { cacheWrapTvdbApi, stableStringify } from './getCache.js';
@@ -1146,6 +1146,7 @@ async function getSeasonExtended(seasonId: string, config: UserConfig): Promise<
 }
 
 const findArtwork = (artworks, type, lang, config) => {
+  artworks = newestBackgroundsFirst(artworks);
   if (lang === null) {
     return artworks?.find(a => a.type === type && a.language === null)?.image
       || artworks?.find(a => a.type === type)?.image;

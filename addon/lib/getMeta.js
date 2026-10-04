@@ -6,7 +6,7 @@ const imdb = require("./imdb");
 const tvmaze = require("./tvmaze");
 const { getImdbRating } = require("./getImdbRating");
 const { to3LetterCode, to3LetterCodeResolved } = require('./language-map');
-const { tvdbLanguageChain, pickTranslation, pickArtwork, classifyTvdbLocalization } = require('../utils/tvdbLanguage');
+const { tvdbLanguageChain, pickTranslation, pickArtwork, classifyTvdbLocalization, newestBackgroundsFirst } = require('../utils/tvdbLanguage');
 const jikan = require('./mal');
 const TVDB_IMAGE_BASE = 'https://artworks.thetvdb.com';
 const idMapper = require('./id-mapper');
@@ -228,6 +228,7 @@ const resolveReleaseTimestamp = (dateString, opts = {}) => {
 };
 
 const findArtwork = (artworks, type, lang, config, typeToFind="image") => {
+  artworks = newestBackgroundsFirst(artworks);
   if (lang === null) {
     return artworks?.find(a => a.type === type && a.language === null)?.[typeToFind]
       || artworks?.find(a => a.type === type)?.[typeToFind];

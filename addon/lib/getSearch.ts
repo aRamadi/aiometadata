@@ -1,4 +1,4 @@
-const { tvdbLanguageChain, pickTranslation, pickArtwork }: any = require('../utils/tvdbLanguage');
+const { tvdbLanguageChain, pickTranslation, pickArtwork, newestBackgroundsFirst }: any = require('../utils/tvdbLanguage');
 require("dotenv").config();
 const { getGenreList }: any = require("./getGenreList");
 const Utils: any = require("../utils/parseProps");
@@ -66,6 +66,7 @@ const host = (process.env.HOST_NAME as string).startsWith('http')
     : `https://${process.env.HOST_NAME}`;
 
 const findArtwork = (artworks: any[], type: number, lang: string | null, config: any): string | undefined => {
+  artworks = newestBackgroundsFirst(artworks);
   if (lang === null) {
     return artworks?.find((a: any) => a.type === type && a.language === null)?.image
       || artworks?.find((a: any) => a.type === type)?.image;

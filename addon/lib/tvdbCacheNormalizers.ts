@@ -1,3 +1,4 @@
+const { artworkBeats }: any = require('../utils/tvdbLanguage');
 const TRANSLATION_NAME_KEYS = ['language', 'name'];
 const TRANSLATION_OVERVIEW_KEYS = ['language', 'overview'];
 const ARTWORK_KEYS = ['id', 'image', 'type', 'language', 'thumbnail', 'width', 'height', 'score', 'includesText'];
@@ -91,13 +92,14 @@ function normalizeTvdbArtworkForCache(artwork: any) {
 }
 
 // findArtwork() only uses .find() — the first match per (type, language).
-// Keep the highest-scored artwork per group to avoid caching more than we need.
+// Keep the highest-scored artwork per group to avoid caching more than we need
+// (a tie between backgrounds goes to the newest: artworkBeats).
 function deduplicateArtworks(artworks: any[]): any[] {
   const bestByKey = new Map<string, any>();
   for (const artwork of artworks) {
     const key = `${artwork.type}:${artwork.language ?? 'null'}`;
     const existing = bestByKey.get(key);
-    if (!existing || (artwork.score ?? 0) > (existing.score ?? 0)) {
+    if (!existing || artworkBeats(artwork, existing)) {
       bestByKey.set(key, artwork);
     }
   }
