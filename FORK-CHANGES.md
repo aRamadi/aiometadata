@@ -14,11 +14,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the ten code changes as `000N-*.patch` files, one per commit, oldest
+  and the eleven code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file in `docs: ...`
   commits, which a rebase simply carries along.
 
-## 1. Code changes (10 commits)
+## 1. Code changes (11 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -32,6 +32,7 @@ an update. Written 2026-09-27.
 | 8 | **Trending by original language** (2026-10-02) | TMDB Trending Movies / Series keep only titles originally in the languages listed in `TMDB_TRENDING_ORIGINAL_LANGUAGES` (`en` here: no Korean, Hindi, Japanese...), in TMDB's own trending order. Each page stays 20 titles (page n is that slice of the filtered chart, read from TMDB page 1 on; chart pages kept 10 minutes). Unset: the worldwide chart, unchanged. TMDB's chart has no language filter, and a Discover catalog sorted by popularity matched only about half of it for movies and a quarter for shows | `addon/lib/getTrending.ts` |
 | 9 | **Trailers in the Original Title Languages** (2026-10-03) | TMDB is also asked for videos in the Original Title Languages (Arabic here). A title made in one of them shows its own trailers first, then English; anything else keeps the old choice (display language, else English, else any) but never takes an Arabic-tagged trailer. Most Arabic series' trailers on TMDB are tagged Arabic only, so before this they had none. No list set: unchanged | `addon/utils/resolveApiLanguage.ts` (`videoLanguagesFor`, `pickTrailers`), `addon/lib/getMeta.js` |
 | 10 | **TMDB show mapped to a bigger IMDb series** (2026-10-04) | TMDB's Monster: The Lizzie Borden Story maps (through TVDB) to IMDb's Monster, which has it as season 4. Built from TMDB, it took Monster's IMDb id with its own season-1 numbering (Dahmer's episode ids) and replaced Monster's cached meta. Now, when TMDB doesn't list that IMDb id for the show and the IMDb series has more seasons, it answers with the IMDb series' own meta (Monster (2022), all seasons): the same as before, but reliable | `addon/lib/getMeta.js` (`borrowedImdbSeriesMeta`) |
+| 11 | **Newest TVDB backdrop on a tie** (2026-10-04) | TVDB backgrounds often share the top score, and the first listed (usually the oldest) won. Now the newest of the equally rated backgrounds wins (Monster: the 2026 backdrop with all four stories instead of 2024's Menendez one). Applies to every TVDB series and movie backdrop; posters and logos unchanged | `addon/utils/tvdbLanguage.ts` (`artworkBeats`, `newestBackgroundsFirst`), `addon/lib/tvdbCacheNormalizers.ts`, `tvdb.ts`, `getMeta.js`, `getSearch.ts` (each `findArtwork`) |
 
 Tried and dropped (2026-10-04): anthology stories (Monster: The Lizzie
 Borden Story) as their own entry with the series' season-4 episode ids.
@@ -121,7 +122,7 @@ git fetch upstream
 git checkout claude/cool-curie-t5fpt7
 git fetch upstream --tags
 git branch fork-<old version>-backup   # and push it, to roll back to
-git rebase vX.Y.Z              # the release tag; replays the 10 commits on it
+git rebase vX.Y.Z              # the release tag; replays the 11 commits on it
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata
@@ -150,6 +151,7 @@ Or from these patch files, on a fresh branch off the new upstream:
 | 8 Trending languages | Yes |
 | 9 Trailer languages | **No**, `addon/lib/getMeta.js`, the same calls as 2: keep upstream's call and set `videoLanguages = videoLanguagesFor(langCode, config.originalTitleLanguages)` |
 | 10 IMDb series guard | New in v3.4.1; one call in `getMeta()`'s `case 'series'` and a function before `handleTvdbCollection` |
+| 11 Newest backdrop | New in v3.4.1; a line at the top of each `findArtwork` and the tie rule in `deduplicateArtworks` |
 
 After updating, check:
 
