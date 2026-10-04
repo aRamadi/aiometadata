@@ -14,11 +14,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the nine code changes as `000N-*.patch` files, one per commit, oldest
+  and the ten code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file in `docs: ...`
   commits, which a rebase simply carries along.
 
-## 1. Code changes (9 commits)
+## 1. Code changes (10 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -31,6 +31,13 @@ an update. Written 2026-09-27.
 | 7 | **Catalogs carry their collection folder** (2026-09-27) | Each catalog in the manifest gets a `folder` field with the title of the collection folder it sits in. Relay uses it to label repeated names ("Popular Movies · Netflix"). Stremio and AIOStreams ignore it | `addon/lib/getManifest.ts` |
 | 8 | **Trending by original language** (2026-10-02) | TMDB Trending Movies / Series keep only titles originally in the languages listed in `TMDB_TRENDING_ORIGINAL_LANGUAGES` (`en` here: no Korean, Hindi, Japanese...), in TMDB's own trending order. Each page stays 20 titles (page n is that slice of the filtered chart, read from TMDB page 1 on; chart pages kept 10 minutes). Unset: the worldwide chart, unchanged. TMDB's chart has no language filter, and a Discover catalog sorted by popularity matched only about half of it for movies and a quarter for shows | `addon/lib/getTrending.ts` |
 | 9 | **Trailers in the Original Title Languages** (2026-10-03) | TMDB is also asked for videos in the Original Title Languages (Arabic here). A title made in one of them shows its own trailers first, then English; anything else keeps the old choice (display language, else English, else any) but never takes an Arabic-tagged trailer. Most Arabic series' trailers on TMDB are tagged Arabic only, so before this they had none. No list set: unchanged | `addon/utils/resolveApiLanguage.ts` (`videoLanguagesFor`, `pickTrailers`), `addon/lib/getMeta.js` |
+| 10 | **TMDB show mapped to a bigger IMDb series** (2026-10-04) | TMDB's Monster: The Lizzie Borden Story maps (through TVDB) to IMDb's Monster, which has it as season 4. Built from TMDB, it took Monster's IMDb id with its own season-1 numbering (Dahmer's episode ids) and replaced Monster's cached meta. Now, when TMDB doesn't list that IMDb id for the show and the IMDb series has more seasons, it answers with the IMDb series' own meta (Monster (2022), all seasons): the same as before, but reliable | `addon/lib/getMeta.js` (`borrowedImdbSeriesMeta`) |
+
+Tried and dropped (2026-10-04): anthology stories (Monster: The Lizzie
+Borden Story) as their own entry with the series' season-4 episode ids.
+Strand always asked that entry for season 1 and dropped S04-named files,
+so it never played there. The code is on the branch
+`anthology-attempt-backup`; change 10 is what was kept.
 
 Commits 2, 3 and 5 are one feature (original titles) and depend on each
 other, in that order.
@@ -114,7 +121,7 @@ git fetch upstream
 git checkout claude/cool-curie-t5fpt7
 git fetch upstream --tags
 git branch fork-<old version>-backup   # and push it, to roll back to
-git rebase vX.Y.Z              # the release tag; replays the 9 commits on it
+git rebase vX.Y.Z              # the release tag; replays the 10 commits on it
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata
@@ -142,6 +149,7 @@ Or from these patch files, on a fresh branch off the new upstream:
 | 7 Catalog folder | Yes |
 | 8 Trending languages | Yes |
 | 9 Trailer languages | **No**, `addon/lib/getMeta.js`, the same calls as 2: keep upstream's call and set `videoLanguages = videoLanguagesFor(langCode, config.originalTitleLanguages)` |
+| 10 IMDb series guard | New in v3.4.1; one call in `getMeta()`'s `case 'series'` and a function before `handleTvdbCollection` |
 
 After updating, check:
 
