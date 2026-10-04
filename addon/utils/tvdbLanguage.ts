@@ -74,4 +74,37 @@ export function pickArtwork(
   return undefined;
 }
 
-module.exports = { tvdbLanguageChain, pickTranslation, pickTranslationWithLang, pickArtwork, classifyTvdbLocalization };
+// Fork: TVDB backgrounds (series 3, movie 15) often tie on score, and the
+// first listed won, usually the oldest: Monster showed its 2024 backdrop
+// over the 2026 one with the same score. Among equal scores, newest first.
+const BACKGROUND_TYPES = new Set([3, 15]);
+
+/** Whether `a` should win over `b`, two artworks of one type and language. */
+export function artworkBeats(a: any, b: any): boolean {
+  const scoreA = a?.score ?? 0;
+  const scoreB = b?.score ?? 0;
+  if (scoreA !== scoreB) return scoreA > scoreB;
+  return BACKGROUND_TYPES.has(a?.type) && (Number(a?.id) || 0) > (Number(b?.id) || 0);
+}
+
+/** `artworks` with each group of equally scored backgrounds newest first;
+ * everything else keeps TVDB's order. */
+export function newestBackgroundsFirst(artworks: any[] | null | undefined): any[] | null | undefined {
+  if (!Array.isArray(artworks) || !artworks.some(a => BACKGROUND_TYPES.has(a?.type))) return artworks;
+  // Each tied group keeps the places its members had, refilled newest first.
+  const groups = new Map<string, number[]>();
+  artworks.forEach((art, index) => {
+    if (!BACKGROUND_TYPES.has(art?.type)) return;
+    const key = `${art.type}:${art.score ?? 0}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(index);
+  });
+  const out = artworks.slice();
+  for (const places of groups.values()) {
+    const newest = places.map(i => artworks[i]).sort((a, b) => (Number(b?.id) || 0) - (Number(a?.id) || 0));
+    places.forEach((place, k) => { out[place] = newest[k]; });
+  }
+  return out;
+}
+
+module.exports = { tvdbLanguageChain, pickTranslation, pickTranslationWithLang, pickArtwork, classifyTvdbLocalization, artworkBeats, newestBackgroundsFirst };
