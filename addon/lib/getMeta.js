@@ -462,6 +462,7 @@ async function getMeta(type, language, stremioId, config = {}, userUUID, include
         break;
       case 'series':
         meta = await getSeriesMeta(preferredProvider, stremioId, language, config, userUUID, allIds, shouldIncludeVideos);
+        meta = await borrowedImdbSeriesMeta(stremioId, meta, language, config, userUUID, shouldIncludeVideos);
         break;
       case 'anime':
         meta = await getAnimeMeta(config.providers?.anime, stremioId, language, config, userUUID, allIds, type, isAnime, shouldIncludeVideos);
@@ -484,6 +485,34 @@ async function getMeta(type, language, stremioId, config = {}, userUUID, include
   } catch (error) {
     logger.error(`Failed to get meta for ${type} with ID ${stremioId}:`, error);
     return { meta: null };
+  }
+}
+
+// A tmdb: series can pick up an IMDb id TMDB doesn't list for it, from
+// TVDB's or a cached mapping: TMDB's Monster: The Lizzie Borden Story
+// (tv/299939) maps to IMDb's Monster (tt13207736), which has it as season 4.
+// Built from TMDB, the meta then took that IMDb id with TMDB's own numbering
+// (Lizzie Borden's episodes as tt13207736:1:1..., Dahmer's ids), and being
+// cached under the IMDb id it replaced the whole series' meta. When the IMDb
+// series has more seasons than the TMDB show, its own meta is the answer.
+async function borrowedImdbSeriesMeta(stremioId, meta, language, config, userUUID, includeVideos) {
+  if (!meta || !stremioId.startsWith('tmdb:') || meta._metaProvider !== 'tmdb') return meta;
+  if (typeof meta.id !== 'string' || !meta.id.startsWith('tt')) return meta;
+  try {
+    const external = await moviedb.tvExternalIds(stremioId.slice(5), config);
+    if (external?.imdb_id === meta.id) return meta;
+    // Only when the IMDb series is more than this show (an anthology): a
+    // show TMDB just lacks the IMDb id for keeps its TMDB meta.
+    const own = await moviedb.tvInfo({ id: stremioId.slice(5), language: resolveApiLanguage(language) }, config);
+    const ownSeasons = (own?.seasons || []).filter(s => s.season_number > 0).length;
+    const whole = (await getMeta('series', language, meta.id, config, userUUID, true))?.meta;
+    const wholeSeasons = new Set((whole?.videos || []).map(v => v.season).filter(n => n > 0)).size;
+    if (!whole || !ownSeasons || wholeSeasons <= ownSeasons) return meta;
+    logger.debug(`[Meta] ${stremioId} maps to ${meta.id}, which TMDB doesn't list for it; answering with ${meta.id}'s own meta`);
+    return whole;
+  } catch (e) {
+    logger.warn(`[Meta] IMDb mapping check for ${stremioId} failed: ${e.message}`);
+    return meta;
   }
 }
 
