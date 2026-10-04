@@ -1284,6 +1284,8 @@ const CATALOG_META_FIELDS = [
   '_imdbId',
   '_tmdbId',
   '_tvdbId',
+  // Fork: an anthology story kept as its own entry (getMeta.js anthologySeason).
+  '_anthologyOf',
   '_malId',
   '_kitsuId',
   '_anilistId',
@@ -1909,6 +1911,7 @@ async function writeMetaComponentsWithConfig({ config, metaId, result, ttl = MET
     imdb_id: meta.imdb_id,
     _imdbId: meta._imdbId,
     _tmdbId: meta._tmdbId,
+    _anthologyOf: meta._anthologyOf,
     _tvdbId: meta._tvdbId,
     _malId: meta._malId,
     _kitsuId: meta._kitsuId,
