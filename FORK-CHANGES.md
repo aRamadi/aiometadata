@@ -14,11 +14,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the nine code changes as `000N-*.patch` files, one per commit, oldest
+  and the ten code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file in `docs: ...`
   commits, which a rebase simply carries along.
 
-## 1. Code changes (9 commits)
+## 1. Code changes (10 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -31,6 +31,7 @@ an update. Written 2026-09-27.
 | 7 | **Catalogs carry their collection folder** (2026-09-27) | Each catalog in the manifest gets a `folder` field with the title of the collection folder it sits in. Relay uses it to label repeated names ("Popular Movies · Netflix"). Stremio and AIOStreams ignore it | `addon/lib/getManifest.ts` |
 | 8 | **Trending by original language** (2026-10-02) | TMDB Trending Movies / Series keep only titles originally in the languages listed in `TMDB_TRENDING_ORIGINAL_LANGUAGES` (`en` here: no Korean, Hindi, Japanese...), in TMDB's own trending order. Each page stays 20 titles (page n is that slice of the filtered chart, read from TMDB page 1 on; chart pages kept 10 minutes). Unset: the worldwide chart, unchanged. TMDB's chart has no language filter, and a Discover catalog sorted by popularity matched only about half of it for movies and a quarter for shows | `addon/lib/getTrending.ts` |
 | 9 | **Trailers in the Original Title Languages** (2026-10-03) | TMDB is also asked for videos in the Original Title Languages (Arabic here). A title made in one of them shows its own trailers first, then English; anything else keeps the old choice (display language, else English, else any) but never takes an Arabic-tagged trailer. Most Arabic series' trailers on TMDB are tagged Arabic only, so before this they had none. No list set: unchanged | `addon/utils/resolveApiLanguage.ts` (`videoLanguagesFor`, `pickTrailers`), `addon/lib/getMeta.js` |
+| 10 | **Anthology stories as their own entry** (2026-10-04) | A TMDB show that is one story of an IMDb anthology (Monster: The Lizzie Borden Story = season 4 of Monster, `tt13207736`) stays its own entry with its own TMDB name, art and episodes, and its episodes carry the series' ids for that season (`tt13207736:4:1`…), so streams are found. Before, it opened as the whole series at season 1. Only when TMDB doesn't list that IMDb id for the show, the show has one season, and it premiered within 3 days of one of the series' seasons. Relay 5.45.0 lists such episodes under both entries | `addon/lib/getMeta.js` (`anthologySeasonMeta`) |
 
 Commits 2, 3 and 5 are one feature (original titles) and depend on each
 other, in that order.
@@ -114,7 +115,7 @@ git fetch upstream
 git checkout claude/cool-curie-t5fpt7
 git fetch upstream --tags
 git branch fork-<old version>-backup   # and push it, to roll back to
-git rebase vX.Y.Z              # the release tag; replays the 9 commits on it
+git rebase vX.Y.Z              # the release tag; replays the 10 commits on it
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata
@@ -142,6 +143,7 @@ Or from these patch files, on a fresh branch off the new upstream:
 | 7 Catalog folder | Yes |
 | 8 Trending languages | Yes |
 | 9 Trailer languages | **No**, `addon/lib/getMeta.js`, the same calls as 2: keep upstream's call and set `videoLanguages = videoLanguagesFor(langCode, config.originalTitleLanguages)` |
+| 10 Anthology stories | New in v3.4.1; adds a call in `getMeta()`'s `case 'series'` and a function before `handleTvdbCollection` |
 
 After updating, check:
 
@@ -160,3 +162,8 @@ After updating, check:
 7. An Arabic series whose only TMDB trailer is Arabic-tagged has one:
    `curl -s localhost:3232/stremio/<uuid>/meta/series/tmdb:293993.json` has a
    non-empty `trailers` (بنج كلي).
+8. Monster: The Lizzie Borden Story opens as its own entry with season 4's ids:
+   `curl -s localhost:3232/stremio/<uuid>/meta/series/tmdb:299939.json | jq -c '[.meta._anthologyOf, .meta.videos[0].id]'`
+   gives `[{"id":"tt13207736","season":4},"tt13207736:4:1"]`. (Only when TVDB maps
+   it to Monster; a cached `e2:meta-alias:*:tmdb:299939` from before change 10
+   must be deleted first.)
