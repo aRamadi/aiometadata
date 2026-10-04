@@ -495,8 +495,9 @@ async function getMeta(type, language, stremioId, config = {}, userUUID, include
 // season 1's episode ids. When a tmdb: series comes out as an IMDb series
 // TMDB doesn't list for it, and its first air date is the premiere of one of
 // that series' seasons, it stays its own TMDB entry, and its episodes take
-// the series' ids for that season (tt13207736:4:1...), the ids stream addons
-// know. `_anthologyOf` names the series and season.
+// the series' ids and numbering for that season (tt13207736:4:1, season 4),
+// as stream addons and their files know them. `_anthologyOf` names the
+// series and season.
 const ANTHOLOGY_PREMIERE_TOLERANCE_MS = 3 * 24 * 60 * 60 * 1000;
 
 /** The season of `videos` whose first episode aired on `firstAirDate`
@@ -561,10 +562,18 @@ async function anthologySeasonMeta(stremioId, meta, language, config, userUUID, 
     for (const video of whole.videos) {
       if (video.season === season) wholeIds.set(video.episode, video.id);
     }
+    // Numbered as the series numbers them (season 4), as the stream files
+    // are (Monster.2022.S04E01...): apps that check a file's SxxEyy against
+    // the episode drop every source of a renumbered season 1.
     story.videos = (story.videos || []).map(video => {
       const id = video.season === ownSeason ? wholeIds.get(video.episode) : null;
-      return id ? { ...video, id } : video;
+      return id ? { ...video, id, season } : video;
     });
+    const posters = story.app_extras?.seasonPosters;
+    if (posters && !Array.isArray(posters) && posters[ownSeason] && season !== ownSeason) {
+      posters[season] = posters[ownSeason];
+      delete posters[ownSeason];
+    }
     story._anthologyOf = { id: whole.id, season };
     logger.debug(`[Meta] ${stremioId} is season ${season} of ${whole.id}; kept as its own entry`);
     return story;
