@@ -1840,6 +1840,17 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
       ? await Promise.all(resolvedImdbResults.map(imdbId => idMapper.getCinemetaVideosForImdbSeries(imdbId)))
       : [];
     const nowMs = Date.now();
+    // A TMDB season that starts after IMDb's last episode is a new season
+    // Cinemeta hasn't listed yet: keep its own number rather than matching
+    // it onto an older season with the same episode count.
+    const lastImdbRelease = Math.max(0, ...cinemetaVideos
+      .filter(v => v.season > 0 && (v.released || v.firstAired))
+      .map(v => new Date(v.released || v.firstAired).getTime())
+      .filter(Number.isFinite));
+    const isNewImdbSeason = (season) => {
+      const start = new Date(season?.air_date).getTime();
+      return lastImdbRelease > 0 && Number.isFinite(start) && start > lastImdbRelease;
+    };
     const videosPromises = seasonDetails.flatMap(season => 
       (season.episodes || []).map(async ep => {
         let episodeId = null; 
@@ -1878,7 +1889,7 @@ async function buildTmdbSeriesResponse(stremioId, seriesData, language, config, 
           else {
             // Use episode-level IMDB mapping with air dates
               if (imdbId && cinemetaVideos.length > 0) {
-                if (validImdbSeasons.has(ep.season_number)) {
+                if (validImdbSeasons.has(ep.season_number) || isNewImdbSeason(season)) {
                   episodeId = `${imdbId}:${ep.season_number}:${ep.episode_number}`;
                 } else {
                   if (allTmdbSeasonsMapToSameImdb) {
