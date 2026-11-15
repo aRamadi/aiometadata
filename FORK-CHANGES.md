@@ -14,11 +14,11 @@ an update. Written 2026-09-27.
   fork branch), so `docker compose up -d --build` in `~/aiometadata` deploys
   whatever is on that branch.
 - **Patches:** on the server, `~/aiometadata/fork-changes/` holds this guide
-  and the eleven code changes as `000N-*.patch` files, one per commit, oldest
+  and the twelve code changes as `000N-*.patch` files, one per commit, oldest
   first. On GitHub the branch itself has them, plus this file in `docs: ...`
   commits, which a rebase simply carries along.
 
-## 1. Code changes (11 commits)
+## 1. Code changes (12 commits)
 
 | # | Change | What you get | Files |
 |---|--------|--------------|-------|
@@ -33,6 +33,7 @@ an update. Written 2026-09-27.
 | 9 | **Trailers in the Original Title Languages** (2026-10-03) | TMDB is also asked for videos in the Original Title Languages (Arabic here). A title made in one of them shows its own trailers first, then English; anything else keeps the old choice (display language, else English, else any) but never takes an Arabic-tagged trailer. Most Arabic series' trailers on TMDB are tagged Arabic only, so before this they had none. No list set: unchanged | `addon/utils/resolveApiLanguage.ts` (`videoLanguagesFor`, `pickTrailers`), `addon/lib/getMeta.js` |
 | 10 | **TMDB show mapped to a bigger IMDb series** (2026-10-04) | TMDB's Monster: The Lizzie Borden Story maps (through TVDB) to IMDb's Monster, which has it as season 4. Built from TMDB, it took Monster's IMDb id with its own season-1 numbering (Dahmer's episode ids) and replaced Monster's cached meta. Now, when TMDB doesn't list that IMDb id for the show and the IMDb series has more seasons, it answers with the IMDb series' own meta (Monster (2022), all seasons): the same as before, but reliable | `addon/lib/getMeta.js` (`borrowedImdbSeriesMeta`) |
 | 11 | **Newest TVDB backdrop on a tie** (2026-10-04) | TVDB backgrounds often share the top score, and the first listed (usually the oldest) won. Now the newest of the equally rated backgrounds wins (Monster: the 2026 backdrop with all four stories instead of 2024's Menendez one). Applies to every TVDB series and movie backdrop; posters and logos unchanged | `addon/utils/tvdbLanguage.ts` (`artworkBeats`, `newestBackgroundsFirst`), `addon/lib/tvdbCacheNormalizers.ts`, `tvdb.ts`, `getMeta.js`, `getSearch.ts` (each `findArtwork`) |
+| 12 | **New season IMDb hasn't listed yet** (2026-11-15) | Love Is Blind, Habibi's season 2 (Nov 2026) isn't on Cinemeta yet, and both seasons have 10 episodes, so upstream's 1:1 fallback gave season 2 season 1's ids (`tt31408266:1:1`...). Relay keys episodes by id, so season 1 showed no episodes and season 2 played season 1's sources. Now a TMDB season that starts after IMDb's last episode keeps its own number (`tt31408266:2:1`), which is what the stream addons search for | `addon/lib/getMeta.js` (`isNewImdbSeason`) |
 
 Tried and dropped (2026-10-04): anthology stories (Monster: The Lizzie
 Borden Story) as their own entry with the series' season-4 episode ids.
@@ -122,7 +123,7 @@ git fetch upstream
 git checkout claude/cool-curie-t5fpt7
 git fetch upstream --tags
 git branch fork-<old version>-backup   # and push it, to roll back to
-git rebase vX.Y.Z              # the release tag; replays the 11 commits on it
+git rebase vX.Y.Z              # the release tag; replays the 12 commits on it
 # fix any conflicts, `git add` them, `git rebase --continue`
 git push --force-with-lease origin claude/cool-curie-t5fpt7
 cd ~/aiometadata
@@ -152,6 +153,7 @@ Or from these patch files, on a fresh branch off the new upstream:
 | 9 Trailer languages | **No**, `addon/lib/getMeta.js`, the same calls as 2: keep upstream's call and set `videoLanguages = videoLanguagesFor(langCode, config.originalTitleLanguages)` |
 | 10 IMDb series guard | New in v3.4.1; one call in `getMeta()`'s `case 'series'` and a function before `handleTvdbCollection` |
 | 11 Newest backdrop | New in v3.4.1; a line at the top of each `findArtwork` and the tie rule in `deduplicateArtworks` |
+| 12 New IMDb season | New in v3.4.1; one condition in the IMDb branch of the episode id builder and `isNewImdbSeason` just before `videosPromises` |
 
 After updating, check:
 
