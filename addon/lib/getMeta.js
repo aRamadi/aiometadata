@@ -359,10 +359,10 @@ function fetchTmdbDetails(kind, tmdbId, language, config) {
   return kind === 'movie' ? moviedb.movieInfo(params, config) : moviedb.tvInfo(params, config);
 }
 
-function tmdbLocalizedText(data, kind, language) {
+function tmdbLocalizedText(data, kind, language, originalTitleLanguages = null) {
   const movie = kind === 'movie';
   return {
-    name: Utils.processTitleTranslations(data.translations, language, movie ? data.title : data.name, kind, data.original_language, movie ? data.original_title : data.original_name),
+    name: Utils.processTitleTranslations(data.translations, language, movie ? data.title : data.name, kind, data.original_language, movie ? data.original_title : data.original_name, originalTitleLanguages),
     description: Utils.processOverviewTranslations(data.translations, language, data.overview),
   };
 }

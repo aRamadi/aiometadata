@@ -42,7 +42,7 @@ async function localizedText(config: any, row: any, kind: Kind, tmdbId: any): Pr
   if (row._artSource !== 'simkl' || !tmdbId || language.split('-')[0] === 'en') return null;
   const { fetchTmdbDetails, tmdbLocalizedText } = require('./getMeta');
   const data = await fetchTmdbDetails(kind, tmdbId, language, config).catch(() => null);
-  return data ? tmdbLocalizedText(data, kind, language) : null;
+  return data ? tmdbLocalizedText(data, kind, language, config?.originalTitleLanguages) : null;
 }
 
 async function titleCard(config: any, row: any, kind: Kind): Promise<any> {
